@@ -1,0 +1,6 @@
+{
+  "name": "Dólar LATAM (DLATAM) Swap Oficial",
+  "description": "Interfaz oficial de intercambio y swap Web3 para Dólar LATAM (DLATAM) y USDT en Binance Smart Chain (BSC).",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

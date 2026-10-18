@@ -1,0 +1,916 @@
+<!DOCTYPE html>
+<html lang="es" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dólar LATAM (DLATAM) — Intercambio Oficial Swap Web3</title>
+  <meta name="description" content="Interfaz oficial y descentralizada de intercambio (Swap) para Dólar LATAM (DLATAM) y USDT en Binance Smart Chain (BSC)." />
+  <meta property="og:title" content="Dólar LATAM (DLATAM) — Intercambio Oficial" />
+  <meta property="og:description" content="Swap seguro, directo y transparente entre USDT y DLATAM en Binance Smart Chain." />
+  <meta property="og:type" content="website" />
+
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            dlatam: {
+              50: '#ecfdf5',
+              100: '#d1fae5',
+              400: '#34d399',
+              500: '#10b981',
+              600: '#059669',
+            }
+          },
+          fontFamily: {
+            sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- Google Fonts: Inter & JetBrains Mono -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+
+  <!-- Ethers.js v6 CDN -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.13.5/ethers.umd.min.js"></script>
+
+  <style>
+    body {
+      font-family: 'Inter', sans-serif;
+      background-color: #0b0f19;
+    }
+    input[type=number]::-webkit-inner-spin-button, 
+    input[type=number]::-webkit-outer-spin-button { 
+      -webkit-appearance: none; 
+      margin: 0; 
+    }
+    input[type=number] {
+      -moz-appearance: textfield;
+    }
+    .glow-cyan {
+      box-shadow: 0 0 50px -10px rgba(6, 182, 212, 0.25);
+    }
+    .glow-green {
+      box-shadow: 0 0 50px -10px rgba(16, 185, 129, 0.25);
+    }
+    .glass-panel {
+      background: rgba(17, 24, 39, 0.75);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+    .glass-input {
+      background: rgba(11, 15, 25, 0.65);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+    }
+    .glass-input:focus-within {
+      border-color: rgba(6, 182, 212, 0.5);
+      box-shadow: 0 0 0 1px rgba(6, 182, 212, 0.3);
+    }
+  </style>
+</head>
+<body class="min-h-screen text-slate-100 antialiased selection:bg-cyan-500 selection:text-slate-950 flex flex-col justify-between relative overflow-x-hidden">
+
+  <!-- Luces decorativas de fondo (Glows Web3) -->
+  <div class="fixed top-[-10%] left-[-10%] w-[500px] h-[500px] bg-cyan-600/15 rounded-full blur-[140px] pointer-events-none -z-10"></div>
+  <div class="fixed bottom-[-10%] right-[-10%] w-[550px] h-[550px] bg-emerald-600/15 rounded-full blur-[160px] pointer-events-none -z-10"></div>
+
+  <!-- BARRA DE NAVEGACIÓN SUPERIOR -->
+  <header class="w-full max-w-7xl mx-auto px-4 sm:px-6 py-4 flex items-center justify-between border-b border-slate-800/60 z-20">
+    <div class="flex items-center space-x-3">
+      <div class="relative flex items-center justify-center w-11 h-11 rounded-2xl bg-gradient-to-br from-emerald-400 via-teal-500 to-cyan-600 p-[1.5px] shadow-lg shadow-emerald-500/20">
+        <div class="w-full h-full bg-slate-950 rounded-2xl flex items-center justify-center overflow-hidden">
+          <span class="text-xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-cyan-300">$</span>
+        </div>
+        <div class="absolute -bottom-1 -right-1 w-4 h-4 bg-yellow-400 rounded-full border-2 border-slate-950 flex items-center justify-center text-[8px] font-bold text-slate-900" title="BNB Smart Chain">B</div>
+      </div>
+      <div>
+        <div class="flex items-center space-x-2">
+          <span class="text-lg font-bold tracking-tight text-white">Dólar LATAM</span>
+          <span class="text-xs px-2 py-0.5 rounded-full font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">DLATAM</span>
+        </div>
+        <div class="flex items-center space-x-1.5 text-xs text-slate-400">
+          <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+          <span>Intercambio Oficial • BSC (BEP-20)</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Menú derecho: Red y Billetera (Sin botón de configuración) -->
+    <div class="flex items-center space-x-2 sm:space-x-3">
+      <div class="hidden sm:flex items-center space-x-2 px-3 py-1.5 rounded-xl bg-slate-900/90 border border-slate-800 text-xs text-slate-300 font-medium">
+        <svg class="w-3.5 h-3.5 text-yellow-400" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M12 2L2 7l10 5 10-5-10-5zm0 18l-8-4 1.5-1.5L12 18l6.5-3.5L20 16l-8 4zm0-6l-8-4 1.5-1.5L12 12l6.5-3.5L20 10l-8 4z"/>
+        </svg>
+        <span>BSC Mainnet</span>
+      </div>
+
+      <div id="walletContainer">
+        <!-- Botón Conectar -->
+        <button id="btnConnectWallet" class="flex items-center space-x-2 px-4 py-2 rounded-xl font-semibold text-sm bg-gradient-to-r from-cyan-500 to-emerald-500 hover:from-cyan-400 hover:to-emerald-400 text-slate-950 shadow-lg shadow-cyan-500/20 active:scale-95 transition-all">
+          <svg class="w-4 h-4 text-slate-950" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"/>
+          </svg>
+          <span>Conectar Billetera</span>
+        </button>
+
+        <!-- Billetera Conectada -->
+        <div id="walletConnectedCard" class="hidden items-center space-x-2 bg-slate-900 border border-slate-800 rounded-xl p-1 pr-3">
+          <div class="flex items-center space-x-1.5 px-2.5 py-1 rounded-lg bg-slate-800 text-xs font-medium text-slate-300">
+            <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
+            <span id="userBalancePreview" class="text-emerald-400 font-semibold">0.00</span>
+            <span class="text-slate-400 text-[10px]" id="userBalancePreviewSymbol">USDT</span>
+          </div>
+          <span id="userWalletAddress" class="text-xs font-mono font-semibold text-slate-200">0x0000...0000</span>
+          <button id="btnDisconnectWallet" class="text-slate-400 hover:text-red-400 text-xs transition ml-1" title="Desconectar">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+            </svg>
+          </button>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- CONTENIDO PRINCIPAL: CAJA DE INTERCAMBIO -->
+  <main class="w-full max-w-xl mx-auto px-4 py-8 flex-1 flex flex-col justify-center items-center relative z-10">
+    <div class="w-full glass-panel rounded-3xl p-5 sm:p-6 shadow-2xl relative border border-slate-800/90 glow-cyan">
+      
+      <!-- Pestañas de Dirección -->
+      <div class="flex items-center justify-between p-1 bg-slate-950/80 rounded-2xl border border-slate-800 mb-5">
+        <button id="tabUsdtToDlatam" class="flex-1 py-2.5 px-3 rounded-xl text-xs sm:text-sm font-semibold transition-all flex items-center justify-center space-x-2 bg-gradient-to-r from-emerald-500 to-teal-500 text-slate-950 shadow-md">
+          <span>Depositar USDT</span>
+          <svg class="w-3.5 h-3.5 text-slate-950" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M14 5l7 7m0 0l-7 7m7-7H3"/>
+          </svg>
+          <span>Recibir DLATAM</span>
+        </button>
+
+        <button id="tabDlatamToUsdt" class="flex-1 py-2.5 px-3 rounded-xl text-xs sm:text-sm font-semibold transition-all flex items-center justify-center space-x-2 text-slate-400 hover:text-slate-200">
+          <span>Depositar DLATAM</span>
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M14 5l7 7m0 0l-7 7m7-7H3"/>
+          </svg>
+          <span>Recibir USDT</span>
+        </button>
+      </div>
+
+      <!-- ENTRADA: TOKEN A ENTREGAR (MONTO BRUTO) -->
+      <div class="glass-input rounded-2xl p-4 transition-all mb-2">
+        <div class="flex items-center justify-between text-xs text-slate-400 mb-2">
+          <span class="font-medium">Tú Entregas (Monto Bruto)</span>
+          <div class="flex items-center space-x-1">
+            <span>Saldo:</span>
+            <span id="inputTokenBalance" class="text-slate-200 font-mono font-medium">0.00</span>
+            <button id="btnMaxBalance" class="ml-1 text-[11px] font-bold text-cyan-400 hover:text-cyan-300 uppercase bg-cyan-950/60 border border-cyan-800/50 px-1.5 py-0.5 rounded transition">
+              MAX
+            </button>
+          </div>
+        </div>
+
+        <div class="flex items-center justify-between space-x-3">
+          <input 
+            type="number" 
+            id="inputAmount" 
+            placeholder="0.0" 
+            min="0" 
+            step="any"
+            class="w-full bg-transparent text-2xl sm:text-3xl font-bold text-white placeholder-slate-600 focus:outline-none"
+            autocomplete="off"
+          />
+
+          <div id="badgeInputToken" class="flex items-center space-x-2 px-3 py-2 rounded-xl bg-slate-800/90 border border-slate-700/80 shadow shrink-0">
+            <div id="iconInputUsdt" class="w-6 h-6 rounded-full bg-teal-500/20 text-teal-400 flex items-center justify-center font-bold text-xs border border-teal-500/40">₮</div>
+            <div id="iconInputDlatam" class="hidden w-6 h-6 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center font-bold text-xs border border-emerald-500/40">$</div>
+            <span id="symbolInputToken" class="font-bold text-sm text-white">USDT</span>
+          </div>
+        </div>
+
+        <!-- Botones de Porcentaje Rápido -->
+        <div class="flex items-center space-x-2 mt-3 pt-2 border-t border-slate-800/60">
+          <button data-pct="0.25" class="btn-pct flex-1 py-1 text-[11px] font-medium text-slate-400 hover:text-white bg-slate-900/80 rounded-lg border border-slate-800/80 transition">25%</button>
+          <button data-pct="0.50" class="btn-pct flex-1 py-1 text-[11px] font-medium text-slate-400 hover:text-white bg-slate-900/80 rounded-lg border border-slate-800/80 transition">50%</button>
+          <button data-pct="0.75" class="btn-pct flex-1 py-1 text-[11px] font-medium text-slate-400 hover:text-white bg-slate-900/80 rounded-lg border border-slate-800/80 transition">75%</button>
+          <button data-pct="1.00" class="btn-pct flex-1 py-1 text-[11px] font-medium text-slate-400 hover:text-white bg-slate-900/80 rounded-lg border border-slate-800/80 transition">100%</button>
+        </div>
+      </div>
+
+      <!-- BOTÓN DE INVERTIR DIRECCIÓN -->
+      <div class="flex justify-center -my-3 relative z-10">
+        <button id="btnSwitchDirection" class="p-2.5 rounded-2xl bg-slate-900 border-2 border-slate-800 text-cyan-400 hover:text-white hover:border-cyan-500/60 hover:scale-110 active:scale-95 shadow-xl transition-all" title="Invertir dirección">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4"/>
+          </svg>
+        </button>
+      </div>
+
+      <!-- SALIDA: TOKEN A RECIBIR (VALOR NETO EXACTO) -->
+      <div class="glass-input rounded-2xl p-4 transition-all mt-2 mb-4 bg-slate-950/60">
+        <div class="flex items-center justify-between text-xs text-slate-400 mb-2">
+          <span class="font-medium flex items-center space-x-1.5">
+            <span>Tú Recibes (Valor Neto Exacto)</span>
+            <span class="px-1.5 py-0.2 rounded bg-cyan-950 text-cyan-300 text-[10px] border border-cyan-800/40">Neto</span>
+          </span>
+          <div class="flex items-center space-x-1">
+            <span>Saldo:</span>
+            <span id="outputTokenBalance" class="text-slate-200 font-mono font-medium">0.00</span>
+          </div>
+        </div>
+
+        <div class="flex items-center justify-between space-x-3">
+          <input 
+            type="text" 
+            id="outputAmount" 
+            placeholder="0.0" 
+            readonly 
+            class="w-full bg-transparent text-2xl sm:text-3xl font-bold text-emerald-400 placeholder-slate-600 focus:outline-none cursor-default"
+          />
+
+          <div id="badgeOutputToken" class="flex items-center space-x-2 px-3 py-2 rounded-xl bg-slate-800/90 border border-slate-700/80 shadow shrink-0">
+            <div id="iconOutputDlatam" class="w-6 h-6 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center font-bold text-xs border border-emerald-500/40">$</div>
+            <div id="iconOutputUsdt" class="hidden w-6 h-6 rounded-full bg-teal-500/20 text-teal-400 flex items-center justify-center font-bold text-xs border border-teal-500/40">₮</div>
+            <span id="symbolOutputToken" class="font-bold text-sm text-white">DLATAM</span>
+          </div>
+        </div>
+
+        <div class="mt-2 text-xs flex items-center justify-between text-slate-400 border-t border-slate-800/40 pt-2">
+          <div class="flex items-center space-x-1.5">
+            <span>Comisión fija deducida:</span>
+            <span id="labelFeeDeducted" class="font-mono font-bold text-amber-400">0.00 USDT</span>
+          </div>
+          <span class="text-[11px] text-slate-500">1 USDT = 1 DLATAM</span>
+        </div>
+      </div>
+
+      <!-- TABLA DINÁMICA DE COMISIONES FIJAS -->
+      <div class="mb-5 rounded-2xl bg-slate-950/70 border border-slate-800/80 p-3.5">
+        <div class="flex items-center justify-between text-xs mb-2.5">
+          <span class="font-semibold text-slate-300 flex items-center space-x-1.5">
+            <svg class="w-3.5 h-3.5 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <span>Escala Oficial de Comisiones (USDT)</span>
+          </span>
+          <span id="activeTierIndicator" class="text-[11px] font-bold text-slate-400">Rango no activo</span>
+        </div>
+
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center text-xs">
+          <div id="tierCard1" class="tier-card p-2 rounded-xl bg-slate-900 border border-slate-800/80 transition-all">
+            <div class="text-[10px] text-slate-400">0 - 99.99</div>
+            <div class="font-mono font-bold text-slate-200 mt-0.5">1.00 USDT</div>
+          </div>
+          <div id="tierCard2" class="tier-card p-2 rounded-xl bg-slate-900 border border-slate-800/80 transition-all">
+            <div class="text-[10px] text-slate-400">100 - 499.99</div>
+            <div class="font-mono font-bold text-slate-200 mt-0.5">2.00 USDT</div>
+          </div>
+          <div id="tierCard3" class="tier-card p-2 rounded-xl bg-slate-900 border border-slate-800/80 transition-all">
+            <div class="text-[10px] text-slate-400">500 - 999.99</div>
+            <div class="font-mono font-bold text-slate-200 mt-0.5">3.50 USDT</div>
+          </div>
+          <div id="tierCard4" class="tier-card p-2 rounded-xl bg-slate-900 border border-slate-800/80 transition-all">
+            <div class="text-[10px] text-slate-400">≥ 1000</div>
+            <div class="font-mono font-bold text-slate-200 mt-0.5">5.00 USDT</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- BOTÓN DE ACCIÓN PRINCIPAL (SWAP / WEB3) -->
+      <button 
+        id="btnAction" 
+        class="w-full py-4 px-6 rounded-2xl font-bold text-base sm:text-lg transition-all duration-200 flex items-center justify-center space-x-3 bg-gradient-to-r from-cyan-500 via-teal-500 to-emerald-500 hover:from-cyan-400 hover:to-emerald-400 text-slate-950 shadow-xl shadow-cyan-500/20 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
+      >
+        <svg id="btnSpinner" class="hidden animate-spin -ml-1 mr-2 h-5 w-5 text-slate-950" fill="none" viewBox="0 0 24 24">
+          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
+        </svg>
+        <span id="btnActionText">Conectar Billetera para Operar</span>
+      </button>
+
+      <!-- Panel de Estado de Transacción (Paso 1 y Paso 2) -->
+      <div id="txStatusBox" class="hidden mt-4 p-3 rounded-xl text-xs bg-slate-900/90 border border-slate-800 text-slate-300">
+        <div class="flex items-center justify-between mb-1">
+          <span id="txStatusTitle" class="font-semibold text-cyan-400">Procesando</span>
+          <span id="txStepBadge" class="px-2 py-0.5 rounded-full text-[10px] bg-cyan-950 text-cyan-300 border border-cyan-800">Paso 1/2</span>
+        </div>
+        <p id="txStatusDesc" class="text-slate-400">Esperando confirmación en tu billetera Web3...</p>
+        <a id="txExplorerLink" href="#" target="_blank" class="hidden mt-2 text-cyan-400 hover:underline flex items-center space-x-1 font-mono text-[11px]">
+          <span>Ver en BscScan</span>
+          <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+          </svg>
+        </a>
+      </div>
+
+      <!-- Enlaces secundarios: MetaMask & BscScan -->
+      <div class="mt-4 pt-3 border-t border-slate-800/60 flex items-center justify-between text-xs">
+        <button id="btnAddTokenToWallet" class="text-slate-400 hover:text-emerald-400 transition flex items-center space-x-1.5">
+          <svg class="w-4 h-4 text-emerald-400" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          <span>Agregar DLATAM a MetaMask</span>
+        </button>
+
+        <a id="linkCambiadorBscScan" href="https://bscscan.com/address/0x218bE74C4eC35FA4E6d028b17E36C2a0a2C6cCb4" target="_blank" class="text-slate-500 hover:text-slate-300 transition flex items-center space-x-1 font-mono text-[11px]">
+          <span>Cambiador BSC</span>
+          <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+          </svg>
+        </a>
+      </div>
+
+    </div>
+
+    <div class="mt-6 w-full max-w-xl text-center text-xs text-slate-500 space-y-1">
+      <p>Intercambio directo y no custodial sin intermediarios.</p>
+      <p class="font-mono text-[11px] text-slate-600">
+        Cambiador: <span id="labelCambiadorAddress" class="text-slate-400">0x218bE74C4eC35FA4E6d028b17E36C2a0a2C6cCb4</span>
+      </p>
+    </div>
+  </main>
+
+  <!-- CONTENEDOR DE TOASTS -->
+  <div id="toastContainer" class="fixed bottom-5 right-5 z-50 flex flex-col space-y-2 pointer-events-none max-w-sm w-full"></div>
+
+  <footer class="w-full max-w-7xl mx-auto px-4 py-4 border-t border-slate-900 text-center text-xs text-slate-600">
+    <p>© 2026 Dólar LATAM (DLATAM). Protocolo de Intercambio Descentralizado BEP-20 en BNB Smart Chain.</p>
+  </footer>
+
+  <!-- LÓGICA JAVASCRIPT CON ETHERS.JS V6 Y VARIABLES DE ENTORNO/SECRETOS -->
+  <script type="module">
+    /**
+     * DÓLAR LATAM (DLATAM) SWAP WEB3
+     * Direcciones configuradas mediante variables de entorno / secretos (.env)
+     */
+
+    // 1. CARGA DE DIRECCIONES DESDE VARIABLES DE ENTORNO / SECRETOS
+    const env = (typeof import.meta !== 'undefined' && import.meta.env) ? import.meta.env : {};
+
+    const CAMBIADOR_ADDRESS = env.VITE_CAMBIADOR_ADDRESS || "0x218bE74C4eC35FA4E6d028b17E36C2a0a2C6cCb4";
+    const USDT_ADDRESS = env.VITE_USDT_ADDRESS || "0x55d398326f99059fF775485246999027B3197955";
+    const DLATAM_ADDRESS = env.VITE_DLATAM_ADDRESS || "0xTU_CONTRATO_DLATAM_AQUI";
+
+    const USDT_DECIMALS = 18;
+    const DLATAM_DECIMALS = 4;
+    const BSC_CHAIN_HEX = "0x38"; // 56 Decimal
+
+    // 2. ABIs ESTÁNDAR
+    const ERC20_ABI = [
+      "function balanceOf(address owner) view returns (uint256)",
+      "function allowance(address owner, address spender) view returns (uint256)",
+      "function approve(address spender, uint256 amount) returns (bool)"
+    ];
+
+    const CAMBIADOR_ABI = [
+      "function cambiarUSDTporDLATAM(uint256 monto) external",
+      "function cambiarDLATAMporUSDT(uint256 monto) external"
+    ];
+
+    // 3. VARIABLES DE ESTADO
+    let provider = null;
+    let signer = null;
+    let userAddress = null;
+    let currentMode = 'USDT_TO_DLATAM'; // 'USDT_TO_DLATAM' o 'DLATAM_TO_USDT'
+    let isProcessing = false;
+    let balanceUSDT = 0;
+    let balanceDLATAM = 0;
+
+    // 4. ELEMENTOS DEL DOM
+    const btnConnectWallet = document.getElementById('btnConnectWallet');
+    const walletConnectedCard = document.getElementById('walletConnectedCard');
+    const userWalletAddress = document.getElementById('userWalletAddress');
+    const btnDisconnectWallet = document.getElementById('btnDisconnectWallet');
+    const userBalancePreview = document.getElementById('userBalancePreview');
+    const userBalancePreviewSymbol = document.getElementById('userBalancePreviewSymbol');
+
+    const tabUsdtToDlatam = document.getElementById('tabUsdtToDlatam');
+    const tabDlatamToUsdt = document.getElementById('tabDlatamToUsdt');
+    const btnSwitchDirection = document.getElementById('btnSwitchDirection');
+
+    const inputAmount = document.getElementById('inputAmount');
+    const outputAmount = document.getElementById('outputAmount');
+    const inputTokenBalance = document.getElementById('inputTokenBalance');
+    const outputTokenBalance = document.getElementById('outputTokenBalance');
+    const btnMaxBalance = document.getElementById('btnMaxBalance');
+
+    const iconInputUsdt = document.getElementById('iconInputUsdt');
+    const iconInputDlatam = document.getElementById('iconInputDlatam');
+    const symbolInputToken = document.getElementById('symbolInputToken');
+
+    const iconOutputDlatam = document.getElementById('iconOutputDlatam');
+    const iconOutputUsdt = document.getElementById('iconOutputUsdt');
+    const symbolOutputToken = document.getElementById('symbolOutputToken');
+
+    const labelFeeDeducted = document.getElementById('labelFeeDeducted');
+    const activeTierIndicator = document.getElementById('activeTierIndicator');
+    const tierCard1 = document.getElementById('tierCard1');
+    const tierCard2 = document.getElementById('tierCard2');
+    const tierCard3 = document.getElementById('tierCard3');
+    const tierCard4 = document.getElementById('tierCard4');
+
+    const btnAction = document.getElementById('btnAction');
+    const btnActionText = document.getElementById('btnActionText');
+    const btnSpinner = document.getElementById('btnSpinner');
+
+    const txStatusBox = document.getElementById('txStatusBox');
+    const txStatusTitle = document.getElementById('txStatusTitle');
+    const txStepBadge = document.getElementById('txStepBadge');
+    const txStatusDesc = document.getElementById('txStatusDesc');
+    const txExplorerLink = document.getElementById('txExplorerLink');
+
+    const btnAddTokenToWallet = document.getElementById('btnAddTokenToWallet');
+    const labelCambiadorAddress = document.getElementById('labelCambiadorAddress');
+    const linkCambiadorBscScan = document.getElementById('linkCambiadorBscScan');
+
+    // Inicializar etiquetas de contrato
+    if (labelCambiadorAddress) labelCambiadorAddress.textContent = CAMBIADOR_ADDRESS;
+    if (linkCambiadorBscScan) linkCambiadorBscScan.href = `https://bscscan.com/address/${CAMBIADOR_ADDRESS}`;
+
+    // ==========================================
+    // REGLAS DE NEGOCIO: CÁLCULO DE COMISIONES
+    // ==========================================
+    function calcularComision(montoBruto) {
+      if (isNaN(montoBruto) || montoBruto <= 0) return { fee: 0, tier: 0 };
+      if (montoBruto < 100) return { fee: 1.00, tier: 1 };
+      if (montoBruto < 500) return { fee: 2.00, tier: 2 };
+      if (montoBruto < 1000) return { fee: 3.50, tier: 3 };
+      return { fee: 5.00, tier: 4 };
+    }
+
+    function actualizarCalculoVisual() {
+      const rawValue = inputAmount.value.trim();
+      const montoBruto = parseFloat(rawValue);
+
+      // Limpiar tarjetas de comisión
+      [tierCard1, tierCard2, tierCard3, tierCard4].forEach(card => {
+        card.classList.remove('border-emerald-500', 'bg-emerald-950/40', 'glow-green');
+        card.classList.add('bg-slate-900', 'border-slate-800/80');
+      });
+
+      if (!rawValue || isNaN(montoBruto) || montoBruto <= 0) {
+        outputAmount.value = "";
+        labelFeeDeducted.textContent = "0.00 USDT";
+        activeTierIndicator.textContent = "Rango no activo";
+        activeTierIndicator.className = "text-[11px] font-bold text-slate-400";
+        actualizarEstadoBoton("EMPTY");
+        return;
+      }
+
+      const { fee, tier } = calcularComision(montoBruto);
+      const valorNeto = montoBruto - fee;
+
+      // Resaltar rango activo
+      if (tier === 1) activarTarjeta(tierCard1, "Tier 1: Comisión 1.00 USDT");
+      if (tier === 2) activarTarjeta(tierCard2, "Tier 2: Comisión 2.00 USDT");
+      if (tier === 3) activarTarjeta(tierCard3, "Tier 3: Comisión 3.50 USDT");
+      if (tier === 4) activarTarjeta(tierCard4, "Tier 4: Comisión 5.00 USDT");
+
+      labelFeeDeducted.textContent = `${fee.toFixed(2)} USDT`;
+
+      // Si el neto es <= 0: Bloquear e indicar "Monto insuficiente"
+      if (valorNeto <= 0) {
+        outputAmount.value = "0.00";
+        actualizarEstadoBoton("INSUFFICIENT_FOR_FEE");
+        return;
+      }
+
+      const decimalsToShow = currentMode === 'USDT_TO_DLATAM' ? 4 : 2;
+      outputAmount.value = valorNeto.toFixed(decimalsToShow);
+
+      const balanceActual = currentMode === 'USDT_TO_DLATAM' ? balanceUSDT : balanceDLATAM;
+      if (userAddress && montoBruto > balanceActual) {
+        actualizarEstadoBoton("EXCEEDS_BALANCE");
+      } else {
+        actualizarEstadoBoton("READY");
+      }
+    }
+
+    function activarTarjeta(el, texto) {
+      el.classList.remove('bg-slate-900', 'border-slate-800/80');
+      el.classList.add('border-emerald-500', 'bg-emerald-950/40', 'glow-green');
+      activeTierIndicator.textContent = texto;
+      activeTierIndicator.className = "text-[11px] font-bold text-emerald-400";
+    }
+
+    function actualizarEstadoBoton(estado) {
+      if (isProcessing) return;
+
+      if (!userAddress) {
+        btnAction.disabled = false;
+        btnActionText.textContent = "Conectar Billetera para Operar";
+        btnAction.className = "w-full py-4 px-6 rounded-2xl font-bold text-base sm:text-lg transition-all duration-200 flex items-center justify-center space-x-3 bg-gradient-to-r from-cyan-500 to-emerald-500 text-slate-950 shadow-xl shadow-cyan-500/20 active:scale-[0.98]";
+        return;
+      }
+
+      switch (estado) {
+        case "EMPTY":
+          btnAction.disabled = true;
+          btnActionText.textContent = "Introduce un Monto";
+          btnAction.className = "w-full py-4 px-6 rounded-2xl font-bold text-base sm:text-lg bg-slate-800 text-slate-500 cursor-not-allowed";
+          break;
+        case "INSUFFICIENT_FOR_FEE":
+          btnAction.disabled = true;
+          btnActionText.textContent = "Monto insuficiente";
+          btnAction.className = "w-full py-4 px-6 rounded-2xl font-bold text-base sm:text-lg bg-rose-950/60 text-rose-300 border border-rose-800/60 cursor-not-allowed";
+          break;
+        case "EXCEEDS_BALANCE":
+          btnAction.disabled = true;
+          btnActionText.textContent = "Saldo Insuficiente en Billetera";
+          btnAction.className = "w-full py-4 px-6 rounded-2xl font-bold text-base sm:text-lg bg-amber-950/60 text-amber-300 border border-amber-800/60 cursor-not-allowed";
+          break;
+        case "READY":
+          btnAction.disabled = false;
+          btnActionText.textContent = currentMode === 'USDT_TO_DLATAM' 
+            ? "Intercambiar USDT por DLATAM" 
+            : "Intercambiar DLATAM por USDT";
+          btnAction.className = "w-full py-4 px-6 rounded-2xl font-bold text-base sm:text-lg transition-all duration-200 flex items-center justify-center space-x-3 bg-gradient-to-r from-cyan-500 via-teal-500 to-emerald-500 hover:from-cyan-400 hover:to-emerald-400 text-slate-950 shadow-xl shadow-cyan-500/20 active:scale-[0.98]";
+          break;
+      }
+    }
+
+    // ==========================================
+    // CONEXIÓN WEB3 & CAMBIO DE RED
+    // ==========================================
+    async function conectarBilletera() {
+      try {
+        if (!window.ethereum) {
+          mostrarToast("error", "No se detectó billetera Web3 (MetaMask/TrustWallet). Por favor instala una extensión.");
+          return;
+        }
+
+        btnActionText.textContent = "Conectando...";
+        btnSpinner.classList.remove('hidden');
+
+        provider = new ethers.BrowserProvider(window.ethereum);
+        const accounts = await provider.send("eth_requestAccounts", []);
+        if (accounts.length === 0) throw new Error("No se seleccionó ninguna cuenta.");
+
+        signer = await provider.getSigner();
+        userAddress = await signer.getAddress();
+
+        await verificarYCambiarRedBSC();
+
+        userWalletAddress.textContent = `${userAddress.substring(0, 6)}...${userAddress.substring(userAddress.length - 4)}`;
+        btnConnectWallet.classList.add('hidden');
+        walletConnectedCard.classList.remove('hidden');
+        walletConnectedCard.classList.add('flex');
+
+        mostrarToast("success", `Billetera conectada: ${userAddress.substring(0, 6)}...${userAddress.substring(userAddress.length - 4)}`);
+        await cargarSaldos();
+
+      } catch (err) {
+        console.error("Error al conectar:", err);
+        mostrarToast("error", err.message || "Error al conectar la billetera");
+      } finally {
+        btnSpinner.classList.add('hidden');
+        actualizarCalculoVisual();
+      }
+    }
+
+    function desconectarBilletera() {
+      userAddress = null;
+      signer = null;
+      provider = null;
+      balanceUSDT = 0;
+      balanceDLATAM = 0;
+
+      btnConnectWallet.classList.remove('hidden');
+      walletConnectedCard.classList.add('hidden');
+      walletConnectedCard.classList.remove('flex');
+      inputTokenBalance.textContent = "0.00";
+      outputTokenBalance.textContent = "0.00";
+
+      actualizarCalculoVisual();
+      mostrarToast("info", "Billetera desconectada.");
+    }
+
+    async function verificarYCambiarRedBSC() {
+      if (!window.ethereum) return;
+      try {
+        const chainId = await window.ethereum.request({ method: 'eth_chainId' });
+        if (chainId !== BSC_CHAIN_HEX) {
+          try {
+            await window.ethereum.request({
+              method: 'wallet_switchEthereumChain',
+              params: [{ chainId: BSC_CHAIN_HEX }],
+            });
+          } catch (switchError) {
+            if (switchError.code === 4902) {
+              await window.ethereum.request({
+                method: 'wallet_addEthereumChain',
+                params: [{
+                  chainId: BSC_CHAIN_HEX,
+                  chainName: 'BNB Smart Chain Mainnet',
+                  nativeCurrency: { name: 'BNB', symbol: 'BNB', decimals: 18 },
+                  rpcUrls: ['https://bsc-dataseed.binance.org/'],
+                  blockExplorerUrls: ['https://bscscan.com/']
+                }],
+              });
+            }
+          }
+        }
+      } catch (e) {
+        console.warn("Red:", e);
+      }
+    }
+
+    async function cargarSaldos() {
+      if (!provider || !userAddress) return;
+      try {
+        const usdtContract = new ethers.Contract(USDT_ADDRESS, ERC20_ABI, provider);
+        const rawUSDT = await usdtContract.balanceOf(userAddress);
+        balanceUSDT = parseFloat(ethers.formatUnits(rawUSDT, USDT_DECIMALS));
+
+        if (DLATAM_ADDRESS && DLATAM_ADDRESS.startsWith('0x') && DLATAM_ADDRESS.length === 42) {
+          try {
+            const dlatamContract = new ethers.Contract(DLATAM_ADDRESS, ERC20_ABI, provider);
+            const rawDLATAM = await dlatamContract.balanceOf(userAddress);
+            balanceDLATAM = parseFloat(ethers.formatUnits(rawDLATAM, DLATAM_DECIMALS));
+          } catch (e) {
+            balanceDLATAM = 0;
+          }
+        } else {
+          balanceDLATAM = 0;
+        }
+
+        if (currentMode === 'USDT_TO_DLATAM') {
+          inputTokenBalance.textContent = balanceUSDT.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 4 });
+          outputTokenBalance.textContent = balanceDLATAM.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 4 });
+          userBalancePreview.textContent = balanceUSDT.toFixed(2);
+          userBalancePreviewSymbol.textContent = "USDT";
+        } else {
+          inputTokenBalance.textContent = balanceDLATAM.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 4 });
+          outputTokenBalance.textContent = balanceUSDT.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 4 });
+          userBalancePreview.textContent = balanceDLATAM.toFixed(2);
+          userBalancePreviewSymbol.textContent = "DLATAM";
+        }
+      } catch (err) {
+        console.error("Error saldos:", err);
+      }
+    }
+
+    // ==========================================
+    // FLUJO DE 2 PASOS (APPROVE + SWAP)
+    // ==========================================
+    async function ejecutarIntercambio() {
+      if (!userAddress) {
+        await conectarBilletera();
+        return;
+      }
+
+      const rawAmount = inputAmount.value.trim();
+      const montoBruto = parseFloat(rawAmount);
+
+      if (isNaN(montoBruto) || montoBruto <= 0) {
+        mostrarToast("warning", "Por favor ingresa un monto válido mayor a 0.");
+        return;
+      }
+
+      const { fee } = calcularComision(montoBruto);
+      if (montoBruto - fee <= 0) {
+        mostrarToast("error", "El monto ingresado es insuficiente para cubrir la comisión fija.");
+        return;
+      }
+
+      if (currentMode === 'DLATAM_TO_USDT' && (!DLATAM_ADDRESS || DLATAM_ADDRESS.includes("TU_CONTRATO"))) {
+        mostrarToast("error", "Configura la dirección del contrato DLATAM en las variables de entorno / secretos (VITE_DLATAM_ADDRESS).");
+        return;
+      }
+
+      isProcessing = true;
+      btnAction.disabled = true;
+      btnSpinner.classList.remove('hidden');
+      txStatusBox.classList.remove('hidden');
+      txExplorerLink.classList.add('hidden');
+
+      try {
+        await verificarYCambiarRedBSC();
+
+        const tokenAddress = currentMode === 'USDT_TO_DLATAM' ? USDT_ADDRESS : DLATAM_ADDRESS;
+        const decimals = currentMode === 'USDT_TO_DLATAM' ? USDT_DECIMALS : DLATAM_DECIMALS;
+        const montoFormateado = ethers.parseUnits(rawAmount, decimals);
+
+        const tokenContract = new ethers.Contract(tokenAddress, ERC20_ABI, signer);
+        
+        // PASO 1: Aprobación de tokens (Approve)
+        btnActionText.textContent = "Aprobando tokens...";
+        txStatusTitle.textContent = "Paso 1 de 2: Autorización (Approve)";
+        txStepBadge.textContent = "Paso 1/2";
+        txStatusDesc.textContent = `Autorizando al contrato Cambiador en tu billetera...`;
+        mostrarToast("info", "Paso 1: Solicitando aprobación del token...");
+
+        const approveTx = await tokenContract.approve(CAMBIADOR_ADDRESS, montoFormateado);
+        txStatusDesc.textContent = "Confirmando aprobación en la cadena de bloques BSC...";
+        await approveTx.wait();
+
+        mostrarToast("success", "Paso 1 completado: Tokens autorizados.");
+
+        // PASO 2: Procesamiento del Intercambio (Swap)
+        btnActionText.textContent = "Procesando Intercambio...";
+        txStatusTitle.textContent = "Paso 2 de 2: Ejecutando Intercambio";
+        txStepBadge.textContent = "Paso 2/2";
+        txStatusDesc.textContent = "Confirmando el swap con el contrato Cambiador...";
+
+        const cambiadorContract = new ethers.Contract(CAMBIADOR_ADDRESS, CAMBIADOR_ABI, signer);
+        let swapTx;
+
+        if (currentMode === 'USDT_TO_DLATAM') {
+          swapTx = await cambiadorContract.cambiarUSDTporDLATAM(montoFormateado);
+        } else {
+          swapTx = await cambiadorContract.cambiarDLATAMporUSDT(montoFormateado);
+        }
+
+        txStatusDesc.textContent = "Minando transacción en BSC...";
+        txExplorerLink.href = `https://bscscan.com/tx/${swapTx.hash}`;
+        txExplorerLink.classList.remove('hidden');
+
+        const receipt = await swapTx.wait();
+
+        mostrarToast("success", `¡Intercambio exitoso! Bloque #${receipt.blockNumber}`);
+        txStatusTitle.textContent = "¡Transacción Exitosa!";
+        txStatusDesc.textContent = "Tokens intercambiados y transferidos a tu billetera.";
+
+        inputAmount.value = "";
+        outputAmount.value = "";
+        await cargarSaldos();
+
+      } catch (err) {
+        console.error("Error Web3:", err);
+        txStatusBox.classList.add('hidden');
+
+        if (err.code === 4001 || (err.message && err.message.toLowerCase().includes("user rejected"))) {
+          mostrarToast("warning", "Transacción cancelada por el usuario en la billetera.");
+        } else if (err.code === "INSUFFICIENT_FUNDS" || (err.message && err.message.includes("insufficient funds"))) {
+          mostrarToast("error", "Fondos insuficientes de BNB para pagar el gas de la red.");
+        } else if (err.message && err.message.includes("execution reverted")) {
+          mostrarToast("error", "Transacción revertida por el contrato inteligente (revisa liquidez).");
+        } else {
+          mostrarToast("error", err.shortMessage || err.message || "Error al procesar la transacción.");
+        }
+      } finally {
+        isProcessing = false;
+        btnSpinner.classList.add('hidden');
+        actualizarCalculoVisual();
+      }
+    }
+
+    // ==========================================
+    // CAMBIO DE MODO Y DIRECCIÓN
+    // ==========================================
+    function establecerModo(nuevoModo) {
+      if (currentMode === nuevoModo) return;
+      currentMode = nuevoModo;
+
+      if (currentMode === 'USDT_TO_DLATAM') {
+        tabUsdtToDlatam.className = "flex-1 py-2.5 px-3 rounded-xl text-xs sm:text-sm font-semibold transition-all flex items-center justify-center space-x-2 bg-gradient-to-r from-emerald-500 to-teal-500 text-slate-950 shadow-md";
+        tabDlatamToUsdt.className = "flex-1 py-2.5 px-3 rounded-xl text-xs sm:text-sm font-semibold transition-all flex items-center justify-center space-x-2 text-slate-400 hover:text-slate-200";
+
+        iconInputUsdt.classList.remove('hidden');
+        iconInputDlatam.classList.add('hidden');
+        symbolInputToken.textContent = "USDT";
+
+        iconOutputDlatam.classList.remove('hidden');
+        iconOutputUsdt.classList.add('hidden');
+        symbolOutputToken.textContent = "DLATAM";
+      } else {
+        tabDlatamToUsdt.className = "flex-1 py-2.5 px-3 rounded-xl text-xs sm:text-sm font-semibold transition-all flex items-center justify-center space-x-2 bg-gradient-to-r from-emerald-500 to-teal-500 text-slate-950 shadow-md";
+        tabUsdtToDlatam.className = "flex-1 py-2.5 px-3 rounded-xl text-xs sm:text-sm font-semibold transition-all flex items-center justify-center space-x-2 text-slate-400 hover:text-slate-200";
+
+        iconInputUsdt.classList.add('hidden');
+        iconInputDlatam.classList.remove('hidden');
+        symbolInputToken.textContent = "DLATAM";
+
+        iconOutputDlatam.classList.add('hidden');
+        iconOutputUsdt.classList.remove('hidden');
+        symbolOutputToken.textContent = "USDT";
+      }
+
+      inputAmount.value = "";
+      outputAmount.value = "";
+      cargarSaldos();
+      actualizarCalculoVisual();
+    }
+
+    // ==========================================
+    // AGREGAR TOKEN A METAMASK
+    // ==========================================
+    async function agregarTokenMetamask() {
+      if (!window.ethereum) {
+        mostrarToast("warning", "No hay billetera Web3 conectada.");
+        return;
+      }
+      if (!DLATAM_ADDRESS || DLATAM_ADDRESS.includes("TU_CONTRATO")) {
+        mostrarToast("warning", "Configura la dirección de DLATAM en los secretos/variables de entorno (VITE_DLATAM_ADDRESS).");
+        return;
+      }
+
+      try {
+        await window.ethereum.request({
+          method: 'wallet_watchAsset',
+          params: {
+            type: 'ERC20',
+            options: {
+              address: DLATAM_ADDRESS,
+              symbol: 'DLATAM',
+              decimals: DLATAM_DECIMALS,
+              image: 'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/binance/info/logo.png',
+            },
+          },
+        });
+        mostrarToast("success", "Solicitud de token enviada a tu billetera.");
+      } catch (error) {
+        console.error(error);
+      }
+    }
+
+    // ==========================================
+    // NOTIFICACIONES TOAST
+    // ==========================================
+    function mostrarToast(tipo, mensaje) {
+      const toast = document.createElement('div');
+      toast.className = `p-3.5 rounded-2xl text-xs font-medium shadow-2xl flex items-center space-x-2.5 pointer-events-auto transform transition-all duration-300 translate-y-2 opacity-0 border backdrop-blur-md ${
+        tipo === 'success' ? 'bg-emerald-950/90 text-emerald-200 border-emerald-500/50' :
+        tipo === 'error' ? 'bg-rose-950/90 text-rose-200 border-rose-500/50' :
+        tipo === 'warning' ? 'bg-amber-950/90 text-amber-200 border-amber-500/50' :
+        'bg-slate-900/95 text-slate-200 border-slate-700'
+      }`;
+
+      let icon = `<svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>`;
+      if (tipo === 'success') {
+        icon = `<svg class="w-4 h-4 text-emerald-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>`;
+      } else if (tipo === 'error') {
+        icon = `<svg class="w-4 h-4 text-rose-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>`;
+      }
+
+      toast.innerHTML = `${icon}<span class="flex-1">${mensaje}</span>`;
+      document.getElementById('toastContainer').appendChild(toast);
+
+      setTimeout(() => toast.classList.remove('translate-y-2', 'opacity-0'), 10);
+      setTimeout(() => {
+        toast.classList.add('opacity-0', 'translate-y-2');
+        setTimeout(() => toast.remove(), 300);
+      }, 4500);
+    }
+
+    // ==========================================
+    // ASIGNACIÓN DE EVENTOS
+    // ==========================================
+    window.addEventListener('DOMContentLoaded', () => {
+      inputAmount.addEventListener('input', actualizarCalculoVisual);
+      tabUsdtToDlatam.addEventListener('click', () => establecerModo('USDT_TO_DLATAM'));
+      tabDlatamToUsdt.addEventListener('click', () => establecerModo('DLATAM_TO_USDT'));
+
+      btnSwitchDirection.addEventListener('click', () => {
+        establecerModo(currentMode === 'USDT_TO_DLATAM' ? 'DLATAM_TO_USDT' : 'USDT_TO_DLATAM');
+      });
+
+      btnMaxBalance.addEventListener('click', () => {
+        const balance = currentMode === 'USDT_TO_DLATAM' ? balanceUSDT : balanceDLATAM;
+        if (balance > 0) {
+          inputAmount.value = balance.toString();
+          actualizarCalculoVisual();
+        } else {
+          mostrarToast("info", "No posees saldo en este token.");
+        }
+      });
+
+      document.querySelectorAll('.btn-pct').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          const pct = parseFloat(e.currentTarget.getAttribute('data-pct'));
+          const balance = currentMode === 'USDT_TO_DLATAM' ? balanceUSDT : balanceDLATAM;
+          if (balance > 0) {
+            inputAmount.value = (balance * pct).toFixed(4);
+            actualizarCalculoVisual();
+          }
+        });
+      });
+
+      btnConnectWallet.addEventListener('click', conectarBilletera);
+      btnDisconnectWallet.addEventListener('click', desconectarBilletera);
+      btnAction.addEventListener('click', ejecutarIntercambio);
+      btnAddTokenToWallet.addEventListener('click', agregarTokenMetamask);
+
+      if (window.ethereum) {
+        window.ethereum.on('accountsChanged', (accounts) => {
+          if (accounts.length === 0) desconectarBilletera();
+          else {
+            userAddress = accounts[0];
+            userWalletAddress.textContent = `${userAddress.substring(0, 6)}...${userAddress.substring(userAddress.length - 4)}`;
+            cargarSaldos();
+            actualizarCalculoVisual();
+          }
+        });
+        window.ethereum.on('chainChanged', () => window.location.reload());
+      }
+
+      actualizarCalculoVisual();
+    });
+  </script>
+</body>
+</html>
