@@ -3,6 +3,53 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  
+  <!-- Polyfill y Corrección de window.fetch para compatibilidad con librerías Web3 (evita error getter-only en iframes) -->
+  <script>
+    (function() {
+      try {
+        var g = typeof globalThis !== 'undefined' ? globalThis : (typeof window !== 'undefined' ? window : self);
+        if (g && typeof g.fetch === 'function') {
+          var originalFetch = g.fetch.bind(g);
+          var fetchSetter = function(val) {
+            try {
+              Object.defineProperty(this, 'fetch', {
+                value: val,
+                writable: true,
+                configurable: true,
+                enumerable: true
+              });
+            } catch (_) {
+              this._fetch = val;
+            }
+          };
+
+          try {
+            Object.defineProperty(g, 'fetch', {
+              get: function() { return originalFetch; },
+              set: fetchSetter,
+              configurable: true,
+              enumerable: true
+            });
+          } catch (_) {}
+
+          if (typeof Window !== 'undefined' && Window.prototype) {
+            try {
+              Object.defineProperty(Window.prototype, 'fetch', {
+                get: function() { return originalFetch; },
+                set: fetchSetter,
+                configurable: true,
+                enumerable: true
+              });
+            } catch (_) {}
+          }
+        }
+      } catch (e) {
+        console.warn('Fetch polyfill patch skipped:', e);
+      }
+    })();
+  </script>
+
   <title>Dólar LATAM ($-LATAM) — Intercambio Oficial Swap Web3</title>
   <meta name="description" content="Interfaz oficial y descentralizada de intercambio (Swap) para Dólar LATAM ($-LATAM) y USDT en Binance Smart Chain (BSC)." />
   <meta property="og:title" content="Dólar LATAM ($-LATAM) — Intercambio Oficial" />
@@ -113,7 +160,7 @@
       </div>
 
       <div id="walletContainer">
-        <!-- Botón Conectar -->
+        <!-- Botón Conectar Principal -->
         <button id="btnConnectWallet" class="flex items-center space-x-2 px-4 py-2 rounded-xl font-semibold text-sm bg-gradient-to-r from-cyan-500 to-emerald-500 hover:from-cyan-400 hover:to-emerald-400 text-slate-950 shadow-lg shadow-cyan-500/20 active:scale-95 transition-all">
           <svg class="w-4 h-4 text-slate-950" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"/>
@@ -124,7 +171,7 @@
         <!-- Billetera Conectada -->
         <div id="walletConnectedCard" class="hidden items-center space-x-2 bg-slate-900 border border-slate-800 rounded-xl p-1 pr-3">
           <div class="flex items-center space-x-1.5 px-2.5 py-1 rounded-lg bg-slate-800 text-xs font-medium text-slate-300">
-            <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
+            <span id="connectionBadgeDot" class="w-2 h-2 rounded-full bg-emerald-400"></span>
             <span id="userBalancePreview" class="text-emerald-400 font-semibold">0.00</span>
             <span class="text-slate-400 text-[10px]" id="userBalancePreviewSymbol">USDT</span>
           </div>
@@ -167,7 +214,6 @@
         <div class="flex items-center justify-between text-xs text-slate-400 mb-2">
           <div class="flex items-center space-x-2">
             <span class="font-medium text-slate-200">Tú Entregas (Monto Bruto)</span>
-            <!-- Etiqueta de Límite Mínimo Obligatorio -->
             <span id="labelMinLimitBadge" class="text-[10px] font-bold text-cyan-400 bg-cyan-950/80 border border-cyan-700/60 px-2 py-0.5 rounded-full">
               Mínimo: 5 USDT
             </span>
@@ -255,9 +301,7 @@
         </div>
       </div>
 
-      <!-- ======================================================== -->
-      <!-- RESUMEN EN VIVO: ¿CUÁNTO VAS A RECIBIR EXACTAMENTE?     -->
-      <!-- ======================================================== -->
+      <!-- RESUMEN EN VIVO: ¿CUÁNTO VAS A RECIBIR EXACTAMENTE? -->
       <div id="receiptSummaryCard" class="mb-4 rounded-2xl bg-gradient-to-b from-slate-900/90 to-slate-950/90 border border-slate-800 p-4 transition-all">
         <div class="flex items-center justify-between text-xs text-slate-400 mb-2.5 pb-2 border-b border-slate-800/80">
           <span class="font-bold text-slate-200 flex items-center space-x-1.5">
@@ -326,6 +370,27 @@
         </div>
       </div>
 
+      <!-- Banner de Solicitud Pendiente en MetaMask (-32002) -->
+      <div id="bannerPendingMetaMask" class="hidden mb-4 p-3.5 rounded-2xl bg-amber-950/75 border border-amber-500/50 text-amber-200 text-xs">
+        <div class="flex items-start space-x-2.5">
+          <span class="text-lg shrink-0">🦊</span>
+          <div class="flex-1">
+            <div class="font-bold text-amber-300">Solicitud pendiente en MetaMask</div>
+            <div class="text-[11px] text-amber-200/90 mt-0.5 leading-relaxed">
+              Ya tienes una ventana o notificación abierta en tu billetera esperando tu respuesta. Haz clic en el ícono del zorrito en la esquina de tu navegador para confirmar o cerrar la solicitud.
+            </div>
+            <div class="mt-2.5 flex items-center space-x-2">
+              <button id="btnRetryCheckAccounts" type="button" class="text-[11px] font-semibold px-3 py-1 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 transition">
+                Comprobar si ya conecté
+              </button>
+              <button id="btnDismissPendingBanner" type="button" class="text-[11px] text-amber-400/80 hover:text-amber-300">
+                Ocultar aviso
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <!-- BOTÓN DE ACCIÓN PRINCIPAL (SWAP / WEB3) -->
       <button 
         id="btnAction" 
@@ -337,6 +402,9 @@
         </svg>
         <span id="btnActionText">Conectar Billetera para Operar</span>
       </button>
+
+      <!-- Texto explicativo dinámico del estado o paso actual -->
+      <p id="btnStepInfoText" class="mt-2 text-center text-[11px] text-slate-400 leading-tight"></p>
 
       <!-- Panel de Estado de Transacción (Paso 1 y Paso 2) -->
       <div id="txStatusBox" class="hidden mt-4 p-3 rounded-xl text-xs bg-slate-900/90 border border-slate-800 text-slate-300">
@@ -380,6 +448,75 @@
     </div>
   </main>
 
+  <!-- ======================================================== -->
+  <!-- MODAL DE CONEXIÓN: METAMASK & WALLETCONNECT              -->
+  <!-- ======================================================== -->
+  <div id="modalConnectWallet" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+    <div class="glass-panel w-full max-w-sm rounded-3xl p-6 border border-slate-700 shadow-2xl relative">
+      <div class="flex items-center justify-between mb-4 pb-3 border-b border-slate-800">
+        <h3 class="text-base font-bold text-white flex items-center space-x-2">
+          <svg class="w-5 h-5 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"/>
+          </svg>
+          <span>Conectar Billetera</span>
+        </h3>
+        <button id="btnCloseConnectModal" class="text-slate-400 hover:text-white p-1 rounded-lg text-lg">✕</button>
+      </div>
+
+      <p class="text-xs text-slate-400 mb-4">Selecciona tu método preferido para operar en BNB Smart Chain:</p>
+
+      <div class="space-y-3">
+        <!-- Opción 1: MetaMask / Navegador Injected -->
+        <button id="btnOptionMetaMask" class="w-full p-3.5 rounded-2xl bg-slate-900/90 hover:bg-slate-800 border border-slate-800 hover:border-cyan-500/50 flex items-center justify-between transition-all group">
+          <div class="flex items-center space-x-3">
+            <div class="w-10 h-10 rounded-xl bg-orange-500/10 border border-orange-500/20 flex items-center justify-center p-1.5 shrink-0">
+              <svg class="w-7 h-7" viewBox="0 0 32 32">
+                <path fill="#E17726" d="M28.4 4.3L17.7 12l2 4.7 8.7-12.4z"/>
+                <path fill="#E27625" d="M3.6 4.3l10.7 7.7-2 4.7L3.6 4.3z"/>
+                <path fill="#E27625" d="M24.7 21.8l-2.4 3.7 6.4 1.7 1.8-6.3-5.8.9z"/>
+                <path fill="#E27625" d="M1.5 21l1.8 6.3 6.4-1.7-2.4-3.7-5.8-.9z"/>
+                <path fill="#F5841F" d="M9.7 14.1l-2.4 3.7 5.8.9-.4-4.2-3-0.4z"/>
+                <path fill="#F5841F" d="M22.3 14.1l-3 .4-.4 4.2 5.8-.9-2.4-3.7z"/>
+                <path fill="#763D16" d="M9.7 25.5l3.2-1.6-2.7-2.1-0.5 3.7z"/>
+                <path fill="#763D16" d="M19.1 23.9l3.2 1.6-.5-3.7-2.7 2.1z"/>
+                <path fill="#F5841F" d="M16 17.5l-3.3-3.8.4 4.2 2.9 2.1 2.9-2.1.4-4.2L16 17.5z"/>
+              </svg>
+            </div>
+            <div class="text-left">
+              <div class="text-sm font-bold text-white group-hover:text-cyan-400 transition">MetaMask / Navegador</div>
+              <div class="text-[11px] text-slate-400">Extensión de PC o navegador dApp</div>
+            </div>
+          </div>
+          <svg class="w-4 h-4 text-slate-500 group-hover:text-cyan-400 group-hover:translate-x-1 transition-all" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+          </svg>
+        </button>
+
+        <!-- Opción 2: WalletConnect (Móvil / QR) -->
+        <button id="btnOptionWalletConnect" class="w-full p-3.5 rounded-2xl bg-slate-900/90 hover:bg-slate-800 border border-slate-800 hover:border-emerald-500/50 flex items-center justify-between transition-all group">
+          <div class="flex items-center space-x-3">
+            <div class="w-10 h-10 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center p-1.5 shrink-0">
+              <svg class="w-7 h-7" viewBox="0 0 24 24" fill="none">
+                <path d="M5.5 8.5C9.1 4.9 14.9 4.9 18.5 8.5L19.2 9.2C19.4 9.4 19.4 9.7 19.2 9.9L17.6 11.5C17.5 11.6 17.3 11.6 17.2 11.5L16.2 10.5C13.8 8.1 10.2 8.1 7.8 10.5L6.8 11.5C6.7 11.6 6.5 11.6 6.4 11.5L4.8 9.9C4.6 9.7 4.6 9.4 4.8 9.2L5.5 8.5ZM21.9 11.9L23.3 13.3C23.5 13.5 23.5 13.8 23.3 14L17.2 20.1C17.1 20.2 16.9 20.2 16.8 20.1L12.5 15.8C12.4 15.7 12.3 15.7 12.2 15.8L7.9 20.1C7.8 20.2 7.6 20.2 7.5 20.1L1.4 14C1.2 13.8 1.2 13.5 1.4 13.3L2.8 11.9C2.9 11.8 3.1 11.8 3.2 11.9L7.5 16.2C7.6 16.3 7.8 16.3 7.9 16.2L12.2 11.9C12.3 11.8 12.5 11.8 12.6 11.9L16.8 16.2C16.9 16.3 17.1 16.3 17.2 16.2L21.5 11.9C21.6 11.8 21.8 11.8 21.9 11.9Z" fill="#3B99FC"/>
+              </svg>
+            </div>
+            <div class="text-left">
+              <div class="text-sm font-bold text-white group-hover:text-emerald-400 transition">WalletConnect</div>
+              <div class="text-[11px] text-slate-400">Trust Wallet, Binance, Rainbow, QR móvil</div>
+            </div>
+          </div>
+          <svg class="w-4 h-4 text-slate-500 group-hover:text-emerald-400 group-hover:translate-x-1 transition-all" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+          </svg>
+        </button>
+      </div>
+
+      <div class="mt-4 pt-3 border-t border-slate-800 text-[11px] text-slate-500 text-center">
+        Conexión directa y no custodial a BNB Smart Chain
+      </div>
+    </div>
+  </div>
+
   <!-- CONTENEDOR DE TOASTS -->
   <div id="toastContainer" class="fixed bottom-5 right-5 z-50 flex flex-col space-y-2 pointer-events-none max-w-sm w-full"></div>
 
@@ -387,12 +524,13 @@
     <p>© 2026 Dólar LATAM ($-LATAM). Protocolo de Intercambio Descentralizado BEP-20 en BNB Smart Chain.</p>
   </footer>
 
-  <!-- LÓGICA JAVASCRIPT CON ETHERS.JS V6 -->
+  <!-- LÓGICA JAVASCRIPT CON ETHERS.JS V6 Y WALLETCONNECT -->
   <script type="module">
     /**
      * DÓLAR LATAM ($-LATAM) SWAP WEB3
-     * Direcciones configuradas mediante variables de entorno / secretos (.env)
+     * Soporte multi-billetera: MetaMask / Extensiones Injected + WalletConnect oficial (QR & Móvil)
      */
+    import { setupWalletConnect } from '/src/walletconnect.ts';
 
     // 1. CARGA DE DIRECCIONES Y CONSTANTES
     const env = (typeof import.meta !== 'undefined' && import.meta.env) ? import.meta.env : {};
@@ -400,13 +538,14 @@
     const CAMBIADOR_ADDRESS = env.VITE_CAMBIADOR_ADDRESS || "0x218bE74C4eC35FA4E6d028b17E36C2a0a2C6cCb4";
     const USDT_ADDRESS = env.VITE_USDT_ADDRESS || "0x55d398326f99059fF775485246999027B3197955";
     const DLATAM_ADDRESS = env.VITE_DLATAM_ADDRESS || env.VITE_SLATAM_ADDRESS || "0xTU_CONTRATO_DLATAM_AQUI";
+    const WALLETCONNECT_PROJECT_ID = env.VITE_WALLETCONNECT_PROJECT_ID || "3fcc6bba2d1de9622da6d114a8a366cb";
 
     const USDT_DECIMALS = 18;
     const DLATAM_DECIMALS = 4;
     const BSC_CHAIN_HEX = "0x38"; // 56 Decimal
     const MONTO_MINIMO = 5.0; // Límite mínimo estricto de 5 unidades
 
-    // 2. ABIs ESTÁNDAR (Las funciones de contrato mantienen la firma del contrato inteligente Cambiador)
+    // 2. ABIs ESTÁNDAR
     const ERC20_ABI = [
       "function balanceOf(address owner) view returns (uint256)",
       "function allowance(address owner, address spender) view returns (uint256)",
@@ -422,8 +561,13 @@
     let provider = null;
     let signer = null;
     let userAddress = null;
+    let connectionType = null; // 'INJECTED' o 'WALLETCONNECT'
+    let web3Modal = null;
+
     let currentMode = 'USDT_TO_DLATAM'; // 'USDT_TO_DLATAM' o 'DLATAM_TO_USDT'
     let isProcessing = false;
+    let isConnecting = false;
+
     let balanceUSDT = 0;
     let balanceDLATAM = 0;
     let allowanceUSDT = 0n;
@@ -436,6 +580,13 @@
     const btnDisconnectWallet = document.getElementById('btnDisconnectWallet');
     const userBalancePreview = document.getElementById('userBalancePreview');
     const userBalancePreviewSymbol = document.getElementById('userBalancePreviewSymbol');
+    const connectionBadgeDot = document.getElementById('connectionBadgeDot');
+
+    // Modal de Conexión
+    const modalConnectWallet = document.getElementById('modalConnectWallet');
+    const btnCloseConnectModal = document.getElementById('btnCloseConnectModal');
+    const btnOptionMetaMask = document.getElementById('btnOptionMetaMask');
+    const btnOptionWalletConnect = document.getElementById('btnOptionWalletConnect');
 
     const tabUsdtToDlatam = document.getElementById('tabUsdtToDlatam');
     const tabDlatamToUsdt = document.getElementById('tabDlatamToUsdt');
@@ -463,7 +614,6 @@
     const tierCard3 = document.getElementById('tierCard3');
     const tierCard4 = document.getElementById('tierCard4');
 
-    // Elementos del Resumen de Recepción
     const summaryGrossAmount = document.getElementById('summaryGrossAmount');
     const summaryTierBadge = document.getElementById('summaryTierBadge');
     const summaryFeeAmount = document.getElementById('summaryFeeAmount');
@@ -473,9 +623,14 @@
     const receiptAlertText = document.getElementById('receiptAlertText');
     const rateSummaryBadge = document.getElementById('rateSummaryBadge');
 
+    const bannerPendingMetaMask = document.getElementById('bannerPendingMetaMask');
+    const btnRetryCheckAccounts = document.getElementById('btnRetryCheckAccounts');
+    const btnDismissPendingBanner = document.getElementById('btnDismissPendingBanner');
+
     const btnAction = document.getElementById('btnAction');
     const btnActionText = document.getElementById('btnActionText');
     const btnSpinner = document.getElementById('btnSpinner');
+    const btnStepInfoText = document.getElementById('btnStepInfoText');
 
     const txStatusBox = document.getElementById('txStatusBox');
     const txStatusTitle = document.getElementById('txStatusTitle');
@@ -487,9 +642,54 @@
     const labelCambiadorAddress = document.getElementById('labelCambiadorAddress');
     const linkCambiadorBscScan = document.getElementById('linkCambiadorBscScan');
 
-    // Inicializar etiquetas de contrato
     if (labelCambiadorAddress) labelCambiadorAddress.textContent = CAMBIADOR_ADDRESS;
     if (linkCambiadorBscScan) linkCambiadorBscScan.href = `https://bscscan.com/address/${CAMBIADOR_ADDRESS}`;
+
+    // ==========================================
+    // INICIALIZACIÓN ASÍNCRONA DE WALLETCONNECT (WEB3MODAL)
+    // ==========================================
+    async function inicializarWalletConnect() {
+      if (web3Modal) return web3Modal;
+      try {
+        web3Modal = await setupWalletConnect(WALLETCONNECT_PROJECT_ID);
+        if (!web3Modal) return null;
+
+        // Suscribirse a cambios de conexión en WalletConnect
+        web3Modal.subscribeProvider(async ({ provider: wcProvider, isConnected, address }) => {
+          if (isConnected && wcProvider) {
+            try {
+              provider = new ethers.BrowserProvider(wcProvider);
+              signer = await provider.getSigner();
+              userAddress = address || (await signer.getAddress());
+              connectionType = 'WALLETCONNECT';
+
+              userWalletAddress.textContent = `${userAddress.substring(0, 6)}...${userAddress.substring(userAddress.length - 4)}`;
+              connectionBadgeDot.className = "w-2 h-2 rounded-full bg-blue-400"; // Azul para WalletConnect
+              btnConnectWallet.classList.add('hidden');
+              walletConnectedCard.classList.remove('hidden');
+              walletConnectedCard.classList.add('flex');
+
+              modalConnectWallet.classList.add('hidden');
+              mostrarToast("success", `Conectado vía WalletConnect: ${userAddress.substring(0, 6)}...${userAddress.substring(userAddress.length - 4)}`);
+
+              await cargarSaldos();
+              actualizarCalculoVisual();
+            } catch (e) {
+              console.error("Error al procesar sesión WalletConnect:", e);
+            }
+          } else if (!isConnected && connectionType === 'WALLETCONNECT') {
+            desconectarBilletera();
+          }
+        });
+        return web3Modal;
+      } catch (err) {
+        console.warn("WalletConnect no inicializado:", err);
+        return null;
+      }
+    }
+
+    // Inicialización no bloqueante
+    inicializarWalletConnect();
 
     // ==========================================
     // REGLAS DE NEGOCIO: CÁLCULO DE COMISIONES
@@ -502,10 +702,6 @@
       return { fee: 5.00, tier: 4 };
     }
 
-    /**
-     * Actualiza el cálculo dinámico en pantalla con el símbolo $-LATAM,
-     * verifica el límite mínimo de 5 e informa con total claridad al usuario.
-     */
     function actualizarCalculoVisual() {
       const rawValue = inputAmount.value.trim();
       const montoBruto = parseFloat(rawValue);
@@ -611,11 +807,11 @@
       if (isAlreadyApproved) {
         receiptAlertText.innerHTML = `<strong>Vas a recibir exactamente:</strong> <span class="text-emerald-300 font-bold">${valorNeto.toFixed(decimalsToShow)} ${simboloSalida}</span> netos en tu billetera. <span class="text-emerald-400/90 block mt-1 text-[11px]">✨ Tokens ya autorizados: la operación se realiza en <strong>1 sola firma directa</strong>.</span>`;
       } else {
-        receiptAlertText.innerHTML = `<strong>Vas a recibir exactamente:</strong> <span class="text-emerald-300 font-bold">${valorNeto.toFixed(decimalsToShow)} ${simboloSalida}</span> netos en tu billetera. <span class="text-cyan-400/90 block mt-1 text-[11px]">ℹ️ Autorización inicial requerida en MetaMask (Paso 1: Aprobar gasto, Paso 2: Intercambiar).</span>`;
+        receiptAlertText.innerHTML = `<strong>Vas a recibir exactamente:</strong> <span class="text-emerald-300 font-bold">${valorNeto.toFixed(decimalsToShow)} ${simboloSalida}</span> netos en tu billetera. <span class="text-cyan-400/90 block mt-1 text-[11px]">ℹ️ Autorización inicial requerida (Paso 1: Aprobar gasto, Paso 2: Intercambiar).</span>`;
       }
       receiptDynamicAlert.className = "mt-3 p-3 rounded-xl text-xs flex items-center space-x-2.5 bg-emerald-950/40 text-emerald-200 border border-emerald-500/40";
 
-      // Validar si el usuario tiene saldo suficiente
+      // Validar saldo
       const balanceActual = currentMode === 'USDT_TO_DLATAM' ? balanceUSDT : balanceDLATAM;
       if (userAddress && montoBruto > balanceActual) {
         actualizarEstadoBoton("EXCEEDS_BALANCE");
@@ -637,6 +833,7 @@
       if (!userAddress) {
         btnAction.disabled = false;
         btnActionText.textContent = "Conectar Billetera para Operar";
+        if (btnStepInfoText) btnStepInfoText.textContent = "Conecta MetaMask, Trust Wallet o WalletConnect para operar.";
         btnAction.className = "w-full py-4 px-6 rounded-2xl font-bold text-base sm:text-lg transition-all duration-200 flex items-center justify-center space-x-3 bg-gradient-to-r from-cyan-500 to-emerald-500 text-slate-950 shadow-xl shadow-cyan-500/20 active:scale-[0.98]";
         return;
       }
@@ -647,44 +844,57 @@
         case "EMPTY":
           btnAction.disabled = true;
           btnActionText.textContent = `Introduce un Monto (Mínimo 5 ${tokenIn})`;
+          if (btnStepInfoText) btnStepInfoText.textContent = `Mínimo de 5 ${tokenIn} para calcular la tasa de cambio y activar la operación.`;
           btnAction.className = "w-full py-4 px-6 rounded-2xl font-bold text-base sm:text-lg bg-slate-800 text-slate-500 cursor-not-allowed";
           break;
 
         case "BELOW_MINIMUM":
           btnAction.disabled = true;
           btnActionText.textContent = `Monto mínimo: 5.00 ${tokenIn}`;
+          if (btnStepInfoText) btnStepInfoText.textContent = `El contrato inteligente requiere al menos 5.00 ${tokenIn} por operación.`;
           btnAction.className = "w-full py-4 px-6 rounded-2xl font-bold text-base sm:text-lg bg-amber-950/70 text-amber-300 border border-amber-700/60 cursor-not-allowed";
           break;
 
         case "INSUFFICIENT_FOR_FEE":
           btnAction.disabled = true;
           btnActionText.textContent = "Monto insuficiente";
+          if (btnStepInfoText) btnStepInfoText.textContent = "La comisión fija absorbe el total del monto enviado.";
           btnAction.className = "w-full py-4 px-6 rounded-2xl font-bold text-base sm:text-lg bg-rose-950/60 text-rose-300 border border-rose-800/60 cursor-not-allowed";
           break;
 
         case "EXCEEDS_BALANCE":
           btnAction.disabled = true;
           btnActionText.textContent = "Saldo Insuficiente en Billetera";
+          if (btnStepInfoText) btnStepInfoText.textContent = `Tu saldo disponible es menor que el monto que intentas enviar.`;
           btnAction.className = "w-full py-4 px-6 rounded-2xl font-bold text-base sm:text-lg bg-amber-950/60 text-amber-300 border border-amber-800/60 cursor-not-allowed";
           break;
 
         case "READY":
           btnAction.disabled = false;
           if (isAlreadyApproved) {
-            btnActionText.textContent = `Intercambiar ${montoBruto.toFixed(2)} ${tokenIn} ➔ Recibir ${valorNeto.toFixed(decimalsToShow)} ${simboloSalida}`;
+            btnActionText.textContent = `⚡ Paso 2: Intercambiar ${montoBruto.toFixed(2)} ${tokenIn} ➔ Recibir ${valorNeto.toFixed(decimalsToShow)} ${simboloSalida}`;
+            if (btnStepInfoText) btnStepInfoText.innerHTML = `✨ <strong>Token ya autorizado:</strong> Esta operación se confirma en <strong>1 sola firma directa</strong> en tu billetera.`;
+            btnAction.className = "w-full py-4 px-6 rounded-2xl font-bold text-base sm:text-lg transition-all duration-200 flex items-center justify-center space-x-3 bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-500 hover:from-emerald-400 hover:to-cyan-400 text-slate-950 shadow-xl shadow-emerald-500/20 active:scale-[0.98]";
           } else {
-            btnActionText.textContent = `1. Autorizar ${tokenIn} ➔ 2. Intercambiar por ${simboloSalida}`;
+            btnActionText.textContent = `🔓 Paso 1: Habilitar ${tokenIn} en tu Billetera`;
+            if (btnStepInfoText) btnStepInfoText.innerHTML = `ℹ️ <strong>Paso 1 de 2:</strong> Autorización requerida por la blockchain. No descuenta fondos. Solo se realiza una única vez.`;
+            btnAction.className = "w-full py-4 px-6 rounded-2xl font-bold text-base sm:text-lg transition-all duration-200 flex items-center justify-center space-x-3 bg-gradient-to-r from-amber-400 via-amber-500 to-orange-500 hover:from-amber-300 hover:to-orange-400 text-slate-950 shadow-xl shadow-amber-500/20 active:scale-[0.98]";
           }
-          btnAction.className = "w-full py-4 px-6 rounded-2xl font-bold text-base sm:text-lg transition-all duration-200 flex items-center justify-center space-x-3 bg-gradient-to-r from-cyan-500 via-teal-500 to-emerald-500 hover:from-cyan-400 hover:to-emerald-400 text-slate-950 shadow-xl shadow-cyan-500/20 active:scale-[0.98]";
           break;
       }
     }
 
-    let isConnecting = false;
+    // ==========================================
+    // GESTIÓN DE MODAL Y CONEXIÓN MULTI-WALLET
+    // ==========================================
+    function abrirModalConexion() {
+      modalConnectWallet.classList.remove('hidden');
+    }
 
-    // ==========================================
-    // CONEXIÓN WEB3 & CAMBIO DE RED
-    // ==========================================
+    function cerrarModalConexion() {
+      modalConnectWallet.classList.add('hidden');
+    }
+
     async function verificarConexionExistente() {
       if (!window.ethereum) return;
       try {
@@ -693,11 +903,14 @@
           provider = new ethers.BrowserProvider(window.ethereum);
           signer = await provider.getSigner();
           userAddress = accounts[0];
+          connectionType = 'INJECTED';
 
           userWalletAddress.textContent = `${userAddress.substring(0, 6)}...${userAddress.substring(userAddress.length - 4)}`;
+          connectionBadgeDot.className = "w-2 h-2 rounded-full bg-emerald-400";
           btnConnectWallet.classList.add('hidden');
           walletConnectedCard.classList.remove('hidden');
           walletConnectedCard.classList.add('flex');
+          if (bannerPendingMetaMask) bannerPendingMetaMask.classList.add('hidden');
 
           await cargarSaldos();
           actualizarCalculoVisual();
@@ -707,15 +920,17 @@
       }
     }
 
-    async function conectarBilletera() {
+    // Conectar vía MetaMask o Extensión de Navegador
+    async function conectarMetaMask() {
+      cerrarModalConexion();
       if (isConnecting) {
-        mostrarToast("warning", "Ya hay una conexión en curso. Por favor revisa la ventana de MetaMask.");
+        mostrarToast("warning", "Ya hay una conexión en curso. Revisa tu billetera.");
         return;
       }
 
       try {
         if (!window.ethereum) {
-          mostrarToast("error", "No se detectó billetera Web3 (MetaMask/TrustWallet). Por favor instala una extensión.");
+          mostrarToast("error", "No se detectó extensión Web3 en tu navegador. Puedes usar la opción de WalletConnect.");
           return;
         }
 
@@ -725,41 +940,40 @@
 
         provider = new ethers.BrowserProvider(window.ethereum);
 
-        // 1. Revisar si la cuenta ya está autorizada sin disparar popup
+        // Primero verificamos si ya hay cuentas autorizadas sin abrir ventana nueva
         let accounts = await window.ethereum.request({ method: 'eth_accounts' });
-
-        // 2. Si no hay cuentas autorizadas, solicitar permisos
         if (!accounts || accounts.length === 0) {
+          // Si no hay cuentas autorizadas, pedimos conexión
           accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
         }
 
-        if (!accounts || accounts.length === 0) {
-          throw new Error("No se seleccionó ninguna cuenta.");
-        }
+        if (!accounts || accounts.length === 0) throw new Error("No se seleccionó ninguna cuenta.");
 
         signer = await provider.getSigner();
         userAddress = accounts[0];
+        connectionType = 'INJECTED';
 
         await verificarYCambiarRedBSC();
 
         userWalletAddress.textContent = `${userAddress.substring(0, 6)}...${userAddress.substring(userAddress.length - 4)}`;
+        connectionBadgeDot.className = "w-2 h-2 rounded-full bg-emerald-400";
         btnConnectWallet.classList.add('hidden');
         walletConnectedCard.classList.remove('hidden');
         walletConnectedCard.classList.add('flex');
+        if (bannerPendingMetaMask) bannerPendingMetaMask.classList.add('hidden');
 
-        mostrarToast("success", `Billetera conectada: ${userAddress.substring(0, 6)}...${userAddress.substring(userAddress.length - 4)}`);
+        mostrarToast("success", `Conectado vía MetaMask: ${userAddress.substring(0, 6)}...${userAddress.substring(userAddress.length - 4)}`);
         await cargarSaldos();
 
       } catch (err) {
-        console.warn("Detalle de conexión Web3:", err);
-
+        console.warn("Error de conexión:", err);
         const errCode = err?.code || err?.error?.code;
         const errMsg = (err?.message || "").toLowerCase();
 
-        // Control específico del error -32002: Solicitud pendiente en MetaMask
         if (errCode === -32002 || errMsg.includes("-32002") || errMsg.includes("already pending")) {
-          mostrarToast("warning", "Hay una solicitud pendiente en MetaMask. Por favor abre la extensión de tu billetera en el navegador para aprobarla.");
-          btnActionText.textContent = "Revisa tu MetaMask";
+          if (bannerPendingMetaMask) bannerPendingMetaMask.classList.remove('hidden');
+          mostrarToast("warning", "🦊 Solicitud pendiente en MetaMask. Haz clic en el zorrito en las extensiones de tu navegador para confirmarla.");
+          btnActionText.textContent = "Revisa tu MetaMask (Pendiente)";
         } else if (errCode === 4001 || errMsg.includes("user rejected") || errMsg.includes("denied")) {
           mostrarToast("info", "Conexión rechazada por el usuario.");
         } else {
@@ -772,12 +986,43 @@
       }
     }
 
-    function desconectarBilletera() {
+    // Conectar vía WalletConnect (Móvil / QR)
+    async function conectarWalletConnect() {
+      cerrarModalConexion();
+      try {
+        if (!web3Modal) {
+          mostrarToast("info", "Iniciando servicio de WalletConnect...");
+          await inicializarWalletConnect();
+        }
+        if (!web3Modal) {
+          mostrarToast("error", "El servicio de WalletConnect no está disponible en este momento.");
+          return;
+        }
+
+        await web3Modal.open();
+      } catch (err) {
+        console.error("Error abriendo WalletConnect:", err);
+        mostrarToast("error", "No se pudo abrir el modal de WalletConnect.");
+      }
+    }
+
+    async function desconectarBilletera() {
+      if (connectionType === 'WALLETCONNECT' && web3Modal) {
+        try {
+          await web3Modal.disconnect();
+        } catch (e) {
+          console.warn("Error desconectando WalletConnect:", e);
+        }
+      }
+
       userAddress = null;
       signer = null;
       provider = null;
+      connectionType = null;
       balanceUSDT = 0;
       balanceDLATAM = 0;
+      allowanceUSDT = 0n;
+      allowanceDLATAM = 0n;
 
       btnConnectWallet.classList.remove('hidden');
       walletConnectedCard.classList.add('hidden');
@@ -790,17 +1035,14 @@
     }
 
     async function verificarYCambiarRedBSC() {
-      if (!window.ethereum) return;
+      if (!provider) return;
       try {
-        const chainId = await window.ethereum.request({ method: 'eth_chainId' });
-        if (chainId !== BSC_CHAIN_HEX) {
+        const network = await provider.getNetwork();
+        if (Number(network.chainId) !== 56) {
           try {
-            await window.ethereum.request({
-              method: 'wallet_switchEthereumChain',
-              params: [{ chainId: BSC_CHAIN_HEX }],
-            });
+            await provider.send('wallet_switchEthereumChain', [{ chainId: BSC_CHAIN_HEX }]);
           } catch (switchError) {
-            if (switchError.code === 4902) {
+            if (switchError.code === 4902 && window.ethereum) {
               await window.ethereum.request({
                 method: 'wallet_addEthereumChain',
                 params: [{
@@ -815,7 +1057,7 @@
           }
         }
       } catch (e) {
-        console.warn("Red:", e);
+        console.warn("Verificación de red:", e);
       }
     }
 
@@ -864,13 +1106,14 @@
     }
 
     // ==========================================
-    // FLUJO DE 2 PASOS (APPROVE + SWAP)
+    // FLUJO DE INTERCAMBIO EN 2 PASOS CONTROLADOS
+    // (PASO 1: APROBAR TOKEN -> PASO 2: EJECUTAR SWAP)
     // ==========================================
-    async function ejecutarIntercambio() {
+    async function ejecutarAccionPrincipal() {
       if (isProcessing) return;
 
       if (!userAddress) {
-        await conectarBilletera();
+        abrirModalConexion();
         return;
       }
 
@@ -882,7 +1125,6 @@
         return;
       }
 
-      // Validación estricta del límite mínimo de 5 unidades
       if (montoBruto < MONTO_MINIMO) {
         mostrarToast("error", `El límite mínimo de intercambio es de ${MONTO_MINIMO}.00 unidades.`);
         return;
@@ -899,6 +1141,26 @@
         return;
       }
 
+      const tokenAddress = currentMode === 'USDT_TO_DLATAM' ? USDT_ADDRESS : DLATAM_ADDRESS;
+      const decimals = currentMode === 'USDT_TO_DLATAM' ? USDT_DECIMALS : DLATAM_DECIMALS;
+      const tokenIn = currentMode === 'USDT_TO_DLATAM' ? 'USDT' : '$-LATAM';
+      const tokenOut = currentMode === 'USDT_TO_DLATAM' ? '$-LATAM' : 'USDT';
+      const montoFormateado = ethers.parseUnits(rawAmount, decimals);
+
+      // Verificamos allowance actual en memoria o en el contrato
+      const currentAllowance = currentMode === 'USDT_TO_DLATAM' ? allowanceUSDT : allowanceDLATAM;
+
+      if (currentAllowance < montoFormateado) {
+        // PASO 1: Ejecutar ÚNICAMENTE la aprobación sin disparar el swap automáticamente
+        await ejecutarAprobacion(tokenAddress, tokenIn, tokenOut, montoFormateado);
+      } else {
+        // PASO 2: Ejecutar el intercambio (Swap definitivo)
+        await ejecutarSwap(montoFormateado, tokenIn, tokenOut);
+      }
+    }
+
+    // PASO 1: Aprobación exclusiva de ERC-20
+    async function ejecutarAprobacion(tokenAddress, tokenIn, tokenOut, montoFormateado) {
       isProcessing = true;
       btnAction.disabled = true;
       btnSpinner.classList.remove('hidden');
@@ -908,44 +1170,56 @@
       try {
         await verificarYCambiarRedBSC();
 
-        const tokenAddress = currentMode === 'USDT_TO_DLATAM' ? USDT_ADDRESS : DLATAM_ADDRESS;
-        const decimals = currentMode === 'USDT_TO_DLATAM' ? USDT_DECIMALS : DLATAM_DECIMALS;
-        const tokenIn = currentMode === 'USDT_TO_DLATAM' ? 'USDT' : '$-LATAM';
-        const tokenOut = currentMode === 'USDT_TO_DLATAM' ? '$-LATAM' : 'USDT';
-        const montoFormateado = ethers.parseUnits(rawAmount, decimals);
+        btnActionText.textContent = `Paso 1: Aprobando ${tokenIn} en tu billetera...`;
+        txStatusTitle.textContent = "Paso 1 de 2: Autorización de Tokens";
+        txStepBadge.textContent = "Paso 1/2";
+        txStatusDesc.textContent = `Acepta la solicitud en tu billetera para permitir el intercambio de tus ${tokenIn}. (Solo se solicita una única vez).`;
+        mostrarToast("info", `Paso 1 de 2: Confirma la autorización de ${tokenIn} en tu billetera.`);
 
         const tokenContract = new ethers.Contract(tokenAddress, ERC20_ABI, signer);
-        
-        // 1. Verificar si ya tenemos permiso (allowance) suficiente
-        const currentAllowance = await tokenContract.allowance(userAddress, CAMBIADOR_ADDRESS);
+        // Aprobamos MaxUint256 para que el usuario NUNCA más tenga que pagar gas ni firmar permisos para este token
+        const approveTx = await tokenContract.approve(CAMBIADOR_ADDRESS, ethers.MaxUint256);
 
-        if (currentAllowance < montoFormateado) {
-          // PASO 1: Aprobación de tokens (Solo si no está aprobado)
-          btnActionText.textContent = "Paso 1/2: Aprobando en MetaMask...";
-          txStatusTitle.textContent = "Paso 1 de 2: Autorización de Tokens";
-          txStepBadge.textContent = "Paso 1/2";
-          txStatusDesc.textContent = `Acepta la autorización en MetaMask para permitir el intercambio de tus ${tokenIn}. (Solo se solicita la primera vez).`;
-          mostrarToast("info", `Paso 1 de 2: Confirma la autorización de ${tokenIn} en MetaMask.`);
+        txStatusDesc.textContent = `Confirmando autorización de ${tokenIn} en BSC...`;
+        txExplorerLink.href = `https://bscscan.com/tx/${approveTx.hash}`;
+        txExplorerLink.classList.remove('hidden');
 
-          // Aprobamos MaxUint256 para que el usuario NUNCA MÁS tenga que volver a aprobar en futuros swaps (estándar DeFi)
-          const approveTx = await tokenContract.approve(CAMBIADOR_ADDRESS, ethers.MaxUint256);
-          txStatusDesc.textContent = "Confirmando autorización en la blockchain BNB Smart Chain...";
-          await approveTx.wait();
+        await approveTx.wait();
 
-          if (currentMode === 'USDT_TO_DLATAM') allowanceUSDT = ethers.MaxUint256;
-          else allowanceDLATAM = ethers.MaxUint256;
+        if (currentMode === 'USDT_TO_DLATAM') allowanceUSDT = ethers.MaxUint256;
+        else allowanceDLATAM = ethers.MaxUint256;
 
-          mostrarToast("success", `Paso 1 completado. Ahora confirma el Paso 2 en MetaMask para recibir tus ${tokenOut}.`);
-        } else {
-          console.log("Tokens ya autorizados con allowance suficiente. Saltando Paso 1.");
-        }
+        txStatusTitle.textContent = "¡Paso 1 Completado!";
+        txStatusDesc.textContent = `¡${tokenIn} autorizado correctamente! Ahora haz clic en "Paso 2: Intercambiar" para completar tu swap.`;
+        mostrarToast("success", `¡${tokenIn} autorizado con éxito! Ahora pulsa "Paso 2: Intercambiar" para recibir tus ${tokenOut}.`);
 
-        // PASO 2: Procesamiento del Intercambio (Swap)
-        btnActionText.textContent = "Confirmando Intercambio en MetaMask...";
-        txStatusTitle.textContent = currentAllowance < montoFormateado ? "Paso 2 de 2: Ejecutando Intercambio" : "Ejecutando Intercambio";
-        txStepBadge.textContent = currentAllowance < montoFormateado ? "Paso 2/2" : "Paso Único";
-        txStatusDesc.textContent = `Confirma la transacción final en MetaMask para recibir tus ${tokenOut}...`;
-        mostrarToast("info", `Confirma el intercambio en MetaMask para recibir tus ${tokenOut}.`);
+      } catch (err) {
+        console.error("Error en Aprobación:", err);
+        txStatusBox.classList.add('hidden');
+        handleWeb3Error(err);
+      } finally {
+        isProcessing = false;
+        btnSpinner.classList.add('hidden');
+        actualizarCalculoVisual();
+      }
+    }
+
+    // PASO 2: Ejecución del Swap
+    async function ejecutarSwap(montoFormateado, tokenIn, tokenOut) {
+      isProcessing = true;
+      btnAction.disabled = true;
+      btnSpinner.classList.remove('hidden');
+      txStatusBox.classList.remove('hidden');
+      txExplorerLink.classList.add('hidden');
+
+      try {
+        await verificarYCambiarRedBSC();
+
+        btnActionText.textContent = "Confirmando Intercambio en tu billetera...";
+        txStatusTitle.textContent = "Paso 2 de 2: Ejecutando Intercambio";
+        txStepBadge.textContent = "Paso 2/2";
+        txStatusDesc.textContent = `Confirma la transacción en tu billetera para recibir tus ${tokenOut}...`;
+        mostrarToast("info", `Confirma el intercambio en tu billetera para recibir tus ${tokenOut}.`);
 
         const cambiadorContract = new ethers.Contract(CAMBIADOR_ADDRESS, CAMBIADOR_ABI, signer);
         let swapTx;
@@ -964,29 +1238,39 @@
 
         mostrarToast("success", `¡Intercambio exitoso! Recibiste tus ${tokenOut}. Bloque #${receipt.blockNumber}`);
         txStatusTitle.textContent = "¡Transacción Exitosa!";
-        txStatusDesc.textContent = `Tus ${tokenOut} han sido transferidos a tu billetera.`;
+        txStatusDesc.textContent = `Tus ${tokenOut} han sido transferidos a tu billetera exitosamente.`;
 
         inputAmount.value = "";
         outputAmount.value = "";
         await cargarSaldos();
 
       } catch (err) {
-        console.error("Error Web3:", err);
+        console.error("Error en Swap:", err);
         txStatusBox.classList.add('hidden');
-
-        if (err.code === 4001 || (err.message && err.message.toLowerCase().includes("user rejected"))) {
-          mostrarToast("warning", "Transacción cancelada por el usuario en la billetera.");
-        } else if (err.code === "INSUFFICIENT_FUNDS" || (err.message && err.message.includes("insufficient funds"))) {
-          mostrarToast("error", "Fondos insuficientes de BNB para pagar el gas de la red.");
-        } else if (err.message && err.message.includes("execution reverted")) {
-          mostrarToast("error", "Transacción revertida por el contrato inteligente (revisa liquidez).");
-        } else {
-          mostrarToast("error", err.shortMessage || err.message || "Error al procesar la transacción.");
-        }
+        handleWeb3Error(err);
       } finally {
         isProcessing = false;
         btnSpinner.classList.add('hidden');
         actualizarCalculoVisual();
+      }
+    }
+
+    // Manejador centralizado de errores Web3
+    function handleWeb3Error(err) {
+      const errCode = err?.code || err?.error?.code;
+      const errMsg = (err?.message || "").toLowerCase();
+
+      if (errCode === 4001 || errMsg.includes("user rejected") || errMsg.includes("denied")) {
+        mostrarToast("warning", "Transacción cancelada por el usuario en la billetera.");
+      } else if (errCode === -32002 || errMsg.includes("-32002") || errMsg.includes("already pending")) {
+        if (bannerPendingMetaMask) bannerPendingMetaMask.classList.remove('hidden');
+        mostrarToast("warning", "🦊 Tienes una solicitud pendiente en MetaMask. Haz clic en el zorrito en las extensiones para responder.");
+      } else if (errCode === "INSUFFICIENT_FUNDS" || errMsg.includes("insufficient funds")) {
+        mostrarToast("error", "Fondos insuficientes de BNB para pagar las comisiones de gas de BSC.");
+      } else if (errMsg.includes("execution reverted")) {
+        mostrarToast("error", "Transacción revertida por el contrato inteligente (revisa liquidez del cambiador).");
+      } else {
+        mostrarToast("error", err?.shortMessage || err?.message || "Error al procesar la transacción.");
       }
     }
 
@@ -1036,11 +1320,11 @@
     // ==========================================
     async function agregarTokenMetamask() {
       if (!window.ethereum) {
-        mostrarToast("warning", "No hay billetera Web3 conectada.");
+        mostrarToast("warning", "Esta función requiere una billetera compatible con EIP-747 (ej. MetaMask).");
         return;
       }
       if (!DLATAM_ADDRESS || DLATAM_ADDRESS.includes("TU_CONTRATO")) {
-        mostrarToast("warning", "Configura la dirección de $-LATAM en los secretos/variables de entorno (VITE_DLATAM_ADDRESS).");
+        mostrarToast("warning", "Configura la dirección de $-LATAM en las variables de entorno / secretos (VITE_DLATAM_ADDRESS).");
         return;
       }
 
@@ -1139,26 +1423,64 @@
         });
       });
 
-      btnConnectWallet.addEventListener('click', conectarBilletera);
-      btnDisconnectWallet.addEventListener('click', desconectarBilletera);
-      btnAction.addEventListener('click', ejecutarIntercambio);
-      btnAddTokenToWallet.addEventListener('click', agregarTokenMetamask);
+      // Apertura de modal de conexión
+      btnConnectWallet.addEventListener('click', abrirModalConexion);
+      btnAction.addEventListener('click', () => {
+        if (!userAddress) abrirModalConexion();
+        else ejecutarAccionPrincipal();
+      });
 
-      if (window.ethereum) {
-        window.ethereum.on('accountsChanged', (accounts) => {
-          if (accounts.length === 0) desconectarBilletera();
-          else {
-            userAddress = accounts[0];
-            userWalletAddress.textContent = `${userAddress.substring(0, 6)}...${userAddress.substring(userAddress.length - 4)}`;
-            cargarSaldos();
-            actualizarCalculoVisual();
+      // Manejadores del banner de solicitud pendiente MetaMask
+      if (btnRetryCheckAccounts) {
+        btnRetryCheckAccounts.addEventListener('click', async () => {
+          await verificarConexionExistente();
+          if (userAddress && bannerPendingMetaMask) {
+            bannerPendingMetaMask.classList.add('hidden');
           }
         });
-        window.ethereum.on('chainChanged', () => window.location.reload());
+      }
+      if (btnDismissPendingBanner) {
+        btnDismissPendingBanner.addEventListener('click', () => {
+          if (bannerPendingMetaMask) bannerPendingMetaMask.classList.add('hidden');
+        });
       }
 
+      // Opciones del Modal
+      btnCloseConnectModal.addEventListener('click', cerrarModalConexion);
+      btnOptionMetaMask.addEventListener('click', conectarMetaMask);
+      btnOptionWalletConnect.addEventListener('click', conectarWalletConnect);
+
+      // Desconectar
+      btnDisconnectWallet.addEventListener('click', desconectarBilletera);
+      btnAddTokenToWallet.addEventListener('click', agregarTokenMetamask);
+
+      // Eventos de billetera Injected (MetaMask)
+      if (window.ethereum) {
+        window.ethereum.on('accountsChanged', (accounts) => {
+          if (connectionType === 'INJECTED') {
+            if (accounts.length === 0) desconectarBilletera();
+            else {
+              userAddress = accounts[0];
+              userWalletAddress.textContent = `${userAddress.substring(0, 6)}...${userAddress.substring(userAddress.length - 4)}`;
+              cargarSaldos();
+              actualizarCalculoVisual();
+              if (bannerPendingMetaMask) bannerPendingMetaMask.classList.add('hidden');
+            }
+          }
+        });
+        window.ethereum.on('chainChanged', () => {
+          if (connectionType === 'INJECTED') window.location.reload();
+        });
+      }
+
+      // Detección automática al regresar a la pestaña desde MetaMask
+      window.addEventListener('focus', async () => {
+        if (!userAddress && window.ethereum) {
+          await verificarConexionExistente();
+        }
+      });
+
       actualizarCalculoVisual();
-      // Auto-detección silenciosa si el usuario ya autorizó la app previamente
       verificarConexionExistente();
     });
   </script>
