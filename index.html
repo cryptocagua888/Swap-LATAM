@@ -3,10 +3,10 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Dólar LATAM (DLATAM) — Intercambio Oficial Swap Web3</title>
-  <meta name="description" content="Interfaz oficial y descentralizada de intercambio (Swap) para Dólar LATAM (DLATAM) y USDT en Binance Smart Chain (BSC)." />
-  <meta property="og:title" content="Dólar LATAM (DLATAM) — Intercambio Oficial" />
-  <meta property="og:description" content="Swap seguro, directo y transparente entre USDT y DLATAM en Binance Smart Chain." />
+  <title>Dólar LATAM ($-LATAM) — Intercambio Oficial Swap Web3</title>
+  <meta name="description" content="Interfaz oficial y descentralizada de intercambio (Swap) para Dólar LATAM ($-LATAM) y USDT en Binance Smart Chain (BSC)." />
+  <meta property="og:title" content="Dólar LATAM ($-LATAM) — Intercambio Oficial" />
+  <meta property="og:description" content="Swap seguro, directo y transparente entre USDT y $-LATAM en Binance Smart Chain." />
   <meta property="og:type" content="website" />
 
   <!-- Tailwind CSS CDN -->
@@ -94,7 +94,7 @@
       <div>
         <div class="flex items-center space-x-2">
           <span class="text-lg font-bold tracking-tight text-white">Dólar LATAM</span>
-          <span class="text-xs px-2 py-0.5 rounded-full font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">DLATAM</span>
+          <span class="text-xs px-2 py-0.5 rounded-full font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">$-LATAM</span>
         </div>
         <div class="flex items-center space-x-1.5 text-xs text-slate-400">
           <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
@@ -103,7 +103,7 @@
       </div>
     </div>
 
-    <!-- Menú derecho: Red y Billetera (Sin botón de configuración) -->
+    <!-- Menú derecho: Red y Billetera -->
     <div class="flex items-center space-x-2 sm:space-x-3">
       <div class="hidden sm:flex items-center space-x-2 px-3 py-1.5 rounded-xl bg-slate-900/90 border border-slate-800 text-xs text-slate-300 font-medium">
         <svg class="w-3.5 h-3.5 text-yellow-400" viewBox="0 0 24 24" fill="currentColor">
@@ -150,11 +150,11 @@
           <svg class="w-3.5 h-3.5 text-slate-950" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M14 5l7 7m0 0l-7 7m7-7H3"/>
           </svg>
-          <span>Recibir DLATAM</span>
+          <span>Recibir $-LATAM</span>
         </button>
 
         <button id="tabDlatamToUsdt" class="flex-1 py-2.5 px-3 rounded-xl text-xs sm:text-sm font-semibold transition-all flex items-center justify-center space-x-2 text-slate-400 hover:text-slate-200">
-          <span>Depositar DLATAM</span>
+          <span>Depositar $-LATAM</span>
           <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M14 5l7 7m0 0l-7 7m7-7H3"/>
           </svg>
@@ -165,7 +165,13 @@
       <!-- ENTRADA: TOKEN A ENTREGAR (MONTO BRUTO) -->
       <div class="glass-input rounded-2xl p-4 transition-all mb-2">
         <div class="flex items-center justify-between text-xs text-slate-400 mb-2">
-          <span class="font-medium">Tú Entregas (Monto Bruto)</span>
+          <div class="flex items-center space-x-2">
+            <span class="font-medium text-slate-200">Tú Entregas (Monto Bruto)</span>
+            <!-- Etiqueta de Límite Mínimo Obligatorio -->
+            <span id="labelMinLimitBadge" class="text-[10px] font-bold text-cyan-400 bg-cyan-950/80 border border-cyan-700/60 px-2 py-0.5 rounded-full">
+              Mínimo: 5 USDT
+            </span>
+          </div>
           <div class="flex items-center space-x-1">
             <span>Saldo:</span>
             <span id="inputTokenBalance" class="text-slate-200 font-mono font-medium">0.00</span>
@@ -179,8 +185,8 @@
           <input 
             type="number" 
             id="inputAmount" 
-            placeholder="0.0" 
-            min="0" 
+            placeholder="Mínimo 5.0" 
+            min="5" 
             step="any"
             class="w-full bg-transparent text-2xl sm:text-3xl font-bold text-white placeholder-slate-600 focus:outline-none"
             autocomplete="off"
@@ -212,10 +218,10 @@
       </div>
 
       <!-- SALIDA: TOKEN A RECIBIR (VALOR NETO EXACTO) -->
-      <div class="glass-input rounded-2xl p-4 transition-all mt-2 mb-4 bg-slate-950/60">
+      <div class="glass-input rounded-2xl p-4 transition-all mt-2 mb-3 bg-slate-950/60">
         <div class="flex items-center justify-between text-xs text-slate-400 mb-2">
           <span class="font-medium flex items-center space-x-1.5">
-            <span>Tú Recibes (Valor Neto Exacto)</span>
+            <span class="text-slate-200">Tú Recibes (Valor Neto)</span>
             <span class="px-1.5 py-0.2 rounded bg-cyan-950 text-cyan-300 text-[10px] border border-cyan-800/40">Neto</span>
           </span>
           <div class="flex items-center space-x-1">
@@ -228,7 +234,7 @@
           <input 
             type="text" 
             id="outputAmount" 
-            placeholder="0.0" 
+            placeholder="0.00" 
             readonly 
             class="w-full bg-transparent text-2xl sm:text-3xl font-bold text-emerald-400 placeholder-slate-600 focus:outline-none cursor-default"
           />
@@ -236,7 +242,7 @@
           <div id="badgeOutputToken" class="flex items-center space-x-2 px-3 py-2 rounded-xl bg-slate-800/90 border border-slate-700/80 shadow shrink-0">
             <div id="iconOutputDlatam" class="w-6 h-6 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center font-bold text-xs border border-emerald-500/40">$</div>
             <div id="iconOutputUsdt" class="hidden w-6 h-6 rounded-full bg-teal-500/20 text-teal-400 flex items-center justify-center font-bold text-xs border border-teal-500/40">₮</div>
-            <span id="symbolOutputToken" class="font-bold text-sm text-white">DLATAM</span>
+            <span id="symbolOutputToken" class="font-bold text-sm text-white">$-LATAM</span>
           </div>
         </div>
 
@@ -245,7 +251,46 @@
             <span>Comisión fija deducida:</span>
             <span id="labelFeeDeducted" class="font-mono font-bold text-amber-400">0.00 USDT</span>
           </div>
-          <span class="text-[11px] text-slate-500">1 USDT = 1 DLATAM</span>
+          <span class="text-[11px] text-slate-500">1 USDT = 1 $-LATAM</span>
+        </div>
+      </div>
+
+      <!-- ======================================================== -->
+      <!-- RESUMEN EN VIVO: ¿CUÁNTO VAS A RECIBIR EXACTAMENTE?     -->
+      <!-- ======================================================== -->
+      <div id="receiptSummaryCard" class="mb-4 rounded-2xl bg-gradient-to-b from-slate-900/90 to-slate-950/90 border border-slate-800 p-4 transition-all">
+        <div class="flex items-center justify-between text-xs text-slate-400 mb-2.5 pb-2 border-b border-slate-800/80">
+          <span class="font-bold text-slate-200 flex items-center space-x-1.5">
+            <svg class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <span>Desglose: ¿Cuánto vas a recibir?</span>
+          </span>
+          <span id="rateSummaryBadge" class="text-[11px] text-slate-400 font-mono">1 USDT = 1 $-LATAM</span>
+        </div>
+
+        <div class="space-y-2 text-xs">
+          <div class="flex justify-between items-center text-slate-400">
+            <span>Monto bruto que envías:</span>
+            <span id="summaryGrossAmount" class="font-mono text-slate-200 font-semibold">0.00 USDT</span>
+          </div>
+          <div class="flex justify-between items-center text-slate-400">
+            <div class="flex items-center space-x-1.5">
+              <span>Comisión de protocolo deducida:</span>
+              <span id="summaryTierBadge" class="text-[10px] px-1.5 py-0.2 rounded bg-amber-500/10 text-amber-400 border border-amber-500/20 font-semibold">Tier 1</span>
+            </div>
+            <span id="summaryFeeAmount" class="font-mono text-amber-400 font-semibold">- 0.00 USDT</span>
+          </div>
+          <div class="pt-2 border-t border-slate-800/80 flex justify-between items-center">
+            <span class="font-bold text-white text-sm">Vas a recibir en tu billetera:</span>
+            <span id="summaryNetAmount" class="font-mono font-bold text-lg text-emerald-400">0.00 $-LATAM</span>
+          </div>
+        </div>
+
+        <!-- Banner Dinámico Explicativo -->
+        <div id="receiptDynamicAlert" class="mt-3 p-3 rounded-xl text-xs flex items-center space-x-2.5 bg-slate-950/70 text-slate-300 border border-slate-800">
+          <span id="receiptAlertIcon" class="text-base shrink-0">💡</span>
+          <span id="receiptAlertText" class="leading-relaxed">Ingresa un monto de al menos <strong>5 unidades</strong> para calcular cuánto vas a recibir.</span>
         </div>
       </div>
 
@@ -263,7 +308,7 @@
 
         <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center text-xs">
           <div id="tierCard1" class="tier-card p-2 rounded-xl bg-slate-900 border border-slate-800/80 transition-all">
-            <div class="text-[10px] text-slate-400">0 - 99.99</div>
+            <div class="text-[10px] text-slate-400">5 - 99.99</div>
             <div class="font-mono font-bold text-slate-200 mt-0.5">1.00 USDT</div>
           </div>
           <div id="tierCard2" class="tier-card p-2 rounded-xl bg-slate-900 border border-slate-800/80 transition-all">
@@ -314,7 +359,7 @@
           <svg class="w-4 h-4 text-emerald-400" viewBox="0 0 24 24" fill="none" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
-          <span>Agregar DLATAM a MetaMask</span>
+          <span>Agregar $-LATAM a MetaMask</span>
         </button>
 
         <a id="linkCambiadorBscScan" href="https://bscscan.com/address/0x218bE74C4eC35FA4E6d028b17E36C2a0a2C6cCb4" target="_blank" class="text-slate-500 hover:text-slate-300 transition flex items-center space-x-1 font-mono text-[11px]">
@@ -339,28 +384,29 @@
   <div id="toastContainer" class="fixed bottom-5 right-5 z-50 flex flex-col space-y-2 pointer-events-none max-w-sm w-full"></div>
 
   <footer class="w-full max-w-7xl mx-auto px-4 py-4 border-t border-slate-900 text-center text-xs text-slate-600">
-    <p>© 2026 Dólar LATAM (DLATAM). Protocolo de Intercambio Descentralizado BEP-20 en BNB Smart Chain.</p>
+    <p>© 2026 Dólar LATAM ($-LATAM). Protocolo de Intercambio Descentralizado BEP-20 en BNB Smart Chain.</p>
   </footer>
 
-  <!-- LÓGICA JAVASCRIPT CON ETHERS.JS V6 Y VARIABLES DE ENTORNO/SECRETOS -->
+  <!-- LÓGICA JAVASCRIPT CON ETHERS.JS V6 -->
   <script type="module">
     /**
-     * DÓLAR LATAM (DLATAM) SWAP WEB3
+     * DÓLAR LATAM ($-LATAM) SWAP WEB3
      * Direcciones configuradas mediante variables de entorno / secretos (.env)
      */
 
-    // 1. CARGA DE DIRECCIONES DESDE VARIABLES DE ENTORNO / SECRETOS
+    // 1. CARGA DE DIRECCIONES Y CONSTANTES
     const env = (typeof import.meta !== 'undefined' && import.meta.env) ? import.meta.env : {};
 
     const CAMBIADOR_ADDRESS = env.VITE_CAMBIADOR_ADDRESS || "0x218bE74C4eC35FA4E6d028b17E36C2a0a2C6cCb4";
     const USDT_ADDRESS = env.VITE_USDT_ADDRESS || "0x55d398326f99059fF775485246999027B3197955";
-    const DLATAM_ADDRESS = env.VITE_DLATAM_ADDRESS || "0xTU_CONTRATO_DLATAM_AQUI";
+    const DLATAM_ADDRESS = env.VITE_DLATAM_ADDRESS || env.VITE_SLATAM_ADDRESS || "0xTU_CONTRATO_DLATAM_AQUI";
 
     const USDT_DECIMALS = 18;
     const DLATAM_DECIMALS = 4;
     const BSC_CHAIN_HEX = "0x38"; // 56 Decimal
+    const MONTO_MINIMO = 5.0; // Límite mínimo estricto de 5 unidades
 
-    // 2. ABIs ESTÁNDAR
+    // 2. ABIs ESTÁNDAR (Las funciones de contrato mantienen la firma del contrato inteligente Cambiador)
     const ERC20_ABI = [
       "function balanceOf(address owner) view returns (uint256)",
       "function allowance(address owner, address spender) view returns (uint256)",
@@ -398,6 +444,7 @@
     const inputTokenBalance = document.getElementById('inputTokenBalance');
     const outputTokenBalance = document.getElementById('outputTokenBalance');
     const btnMaxBalance = document.getElementById('btnMaxBalance');
+    const labelMinLimitBadge = document.getElementById('labelMinLimitBadge');
 
     const iconInputUsdt = document.getElementById('iconInputUsdt');
     const iconInputDlatam = document.getElementById('iconInputDlatam');
@@ -413,6 +460,16 @@
     const tierCard2 = document.getElementById('tierCard2');
     const tierCard3 = document.getElementById('tierCard3');
     const tierCard4 = document.getElementById('tierCard4');
+
+    // Elementos del Resumen de Recepción
+    const summaryGrossAmount = document.getElementById('summaryGrossAmount');
+    const summaryTierBadge = document.getElementById('summaryTierBadge');
+    const summaryFeeAmount = document.getElementById('summaryFeeAmount');
+    const summaryNetAmount = document.getElementById('summaryNetAmount');
+    const receiptDynamicAlert = document.getElementById('receiptDynamicAlert');
+    const receiptAlertIcon = document.getElementById('receiptAlertIcon');
+    const receiptAlertText = document.getElementById('receiptAlertText');
+    const rateSummaryBadge = document.getElementById('rateSummaryBadge');
 
     const btnAction = document.getElementById('btnAction');
     const btnActionText = document.getElementById('btnActionText');
@@ -443,9 +500,17 @@
       return { fee: 5.00, tier: 4 };
     }
 
+    /**
+     * Actualiza el cálculo dinámico en pantalla con el símbolo $-LATAM,
+     * verifica el límite mínimo de 5 e informa con total claridad al usuario.
+     */
     function actualizarCalculoVisual() {
       const rawValue = inputAmount.value.trim();
       const montoBruto = parseFloat(rawValue);
+
+      const simboloEntrada = currentMode === 'USDT_TO_DLATAM' ? 'USDT' : '$-LATAM';
+      const simboloSalida = currentMode === 'USDT_TO_DLATAM' ? '$-LATAM' : 'USDT';
+      const decimalsToShow = currentMode === 'USDT_TO_DLATAM' ? 4 : 2;
 
       // Limpiar tarjetas de comisión
       [tierCard1, tierCard2, tierCard3, tierCard4].forEach(card => {
@@ -453,11 +518,23 @@
         card.classList.add('bg-slate-900', 'border-slate-800/80');
       });
 
+      // CASO 1: CAMPO VACÍO O INVÁLIDO
       if (!rawValue || isNaN(montoBruto) || montoBruto <= 0) {
         outputAmount.value = "";
         labelFeeDeducted.textContent = "0.00 USDT";
         activeTierIndicator.textContent = "Rango no activo";
         activeTierIndicator.className = "text-[11px] font-bold text-slate-400";
+
+        summaryGrossAmount.textContent = `0.00 ${simboloEntrada}`;
+        summaryFeeAmount.textContent = "- 0.00 USDT";
+        summaryTierBadge.textContent = "Sin rango";
+        summaryNetAmount.textContent = `0.00 ${simboloSalida}`;
+        summaryNetAmount.className = "font-mono font-bold text-lg text-slate-500";
+
+        receiptAlertIcon.textContent = "💡";
+        receiptAlertText.innerHTML = `Ingresa un monto de al menos <strong>5 ${simboloEntrada}</strong> para calcular cuánto vas a recibir.`;
+        receiptDynamicAlert.className = "mt-3 p-3 rounded-xl text-xs flex items-center space-x-2.5 bg-slate-950/70 text-slate-300 border border-slate-800";
+
         actualizarEstadoBoton("EMPTY");
         return;
       }
@@ -466,28 +543,68 @@
       const valorNeto = montoBruto - fee;
 
       // Resaltar rango activo
-      if (tier === 1) activarTarjeta(tierCard1, "Tier 1: Comisión 1.00 USDT");
-      if (tier === 2) activarTarjeta(tierCard2, "Tier 2: Comisión 2.00 USDT");
-      if (tier === 3) activarTarjeta(tierCard3, "Tier 3: Comisión 3.50 USDT");
-      if (tier === 4) activarTarjeta(tierCard4, "Tier 4: Comisión 5.00 USDT");
+      if (tier === 1) {
+        activarTarjeta(tierCard1, "Tier 1: Comisión 1.00 USDT");
+        summaryTierBadge.textContent = "Tier 1 (1.00 USDT)";
+      } else if (tier === 2) {
+        activarTarjeta(tierCard2, "Tier 2: Comisión 2.00 USDT");
+        summaryTierBadge.textContent = "Tier 2 (2.00 USDT)";
+      } else if (tier === 3) {
+        activarTarjeta(tierCard3, "Tier 3: Comisión 3.50 USDT");
+        summaryTierBadge.textContent = "Tier 3 (3.50 USDT)";
+      } else if (tier === 4) {
+        activarTarjeta(tierCard4, "Tier 4: Comisión 5.00 USDT");
+        summaryTierBadge.textContent = "Tier 4 (5.00 USDT)";
+      }
 
       labelFeeDeducted.textContent = `${fee.toFixed(2)} USDT`;
+      summaryGrossAmount.textContent = `${montoBruto.toFixed(2)} ${simboloEntrada}`;
+      summaryFeeAmount.textContent = `- ${fee.toFixed(2)} USDT`;
 
-      // Si el neto es <= 0: Bloquear e indicar "Monto insuficiente"
+      // CASO 2: MONTO MENOR AL LÍMITE MÍNIMO DE 5 UNIDADES
+      if (montoBruto < MONTO_MINIMO) {
+        outputAmount.value = "";
+        summaryNetAmount.textContent = `Mínimo 5.00 ${simboloEntrada}`;
+        summaryNetAmount.className = "font-mono font-bold text-base text-amber-400";
+
+        receiptAlertIcon.textContent = "⚠️";
+        const falta = (MONTO_MINIMO - montoBruto).toFixed(2);
+        receiptAlertText.innerHTML = `<strong>Límite mínimo no alcanzado:</strong> El monto mínimo para enviar es de <strong>5.00 ${simboloEntrada}</strong>. Te faltan <strong>${falta} ${simboloEntrada}</strong> para operar.`;
+        receiptDynamicAlert.className = "mt-3 p-3 rounded-xl text-xs flex items-center space-x-2.5 bg-amber-950/40 text-amber-200 border border-amber-600/50";
+
+        actualizarEstadoBoton("BELOW_MINIMUM", montoBruto);
+        return;
+      }
+
+      // CASO 3: VALOR NETO MENOR O IGUAL A 0
       if (valorNeto <= 0) {
         outputAmount.value = "0.00";
+        summaryNetAmount.textContent = `0.00 ${simboloSalida}`;
+        summaryNetAmount.className = "font-mono font-bold text-base text-rose-400";
+
+        receiptAlertIcon.textContent = "❌";
+        receiptAlertText.innerHTML = `<strong>Monto insuficiente:</strong> La comisión fija absorbe la totalidad del monto enviado.`;
+        receiptDynamicAlert.className = "mt-3 p-3 rounded-xl text-xs flex items-center space-x-2.5 bg-rose-950/40 text-rose-200 border border-rose-800/60";
+
         actualizarEstadoBoton("INSUFFICIENT_FOR_FEE");
         return;
       }
 
-      const decimalsToShow = currentMode === 'USDT_TO_DLATAM' ? 4 : 2;
+      // CASO 4: CÁLCULO EXITOSO Y VÁLIDO (MONTO >= 5)
       outputAmount.value = valorNeto.toFixed(decimalsToShow);
+      summaryNetAmount.textContent = `${valorNeto.toFixed(decimalsToShow)} ${simboloSalida}`;
+      summaryNetAmount.className = "font-mono font-bold text-lg text-emerald-400";
 
+      receiptAlertIcon.textContent = "✅";
+      receiptAlertText.innerHTML = `<strong>Vas a recibir exactamente:</strong> <span class="text-emerald-300 font-bold">${valorNeto.toFixed(decimalsToShow)} ${simboloSalida}</span> netos en tu billetera tras confirmarse el intercambio.`;
+      receiptDynamicAlert.className = "mt-3 p-3 rounded-xl text-xs flex items-center space-x-2.5 bg-emerald-950/40 text-emerald-200 border border-emerald-500/40";
+
+      // Validar si el usuario tiene saldo suficiente
       const balanceActual = currentMode === 'USDT_TO_DLATAM' ? balanceUSDT : balanceDLATAM;
       if (userAddress && montoBruto > balanceActual) {
         actualizarEstadoBoton("EXCEEDS_BALANCE");
       } else {
-        actualizarEstadoBoton("READY");
+        actualizarEstadoBoton("READY", montoBruto, valorNeto, decimalsToShow, simboloSalida);
       }
     }
 
@@ -498,7 +615,7 @@
       activeTierIndicator.className = "text-[11px] font-bold text-emerald-400";
     }
 
-    function actualizarEstadoBoton(estado) {
+    function actualizarEstadoBoton(estado, montoBruto, valorNeto, decimalsToShow, simboloSalida) {
       if (isProcessing) return;
 
       if (!userAddress) {
@@ -508,27 +625,36 @@
         return;
       }
 
+      const tokenIn = currentMode === 'USDT_TO_DLATAM' ? 'USDT' : '$-LATAM';
+
       switch (estado) {
         case "EMPTY":
           btnAction.disabled = true;
-          btnActionText.textContent = "Introduce un Monto";
+          btnActionText.textContent = `Introduce un Monto (Mínimo 5 ${tokenIn})`;
           btnAction.className = "w-full py-4 px-6 rounded-2xl font-bold text-base sm:text-lg bg-slate-800 text-slate-500 cursor-not-allowed";
           break;
+
+        case "BELOW_MINIMUM":
+          btnAction.disabled = true;
+          btnActionText.textContent = `Monto mínimo: 5.00 ${tokenIn}`;
+          btnAction.className = "w-full py-4 px-6 rounded-2xl font-bold text-base sm:text-lg bg-amber-950/70 text-amber-300 border border-amber-700/60 cursor-not-allowed";
+          break;
+
         case "INSUFFICIENT_FOR_FEE":
           btnAction.disabled = true;
           btnActionText.textContent = "Monto insuficiente";
           btnAction.className = "w-full py-4 px-6 rounded-2xl font-bold text-base sm:text-lg bg-rose-950/60 text-rose-300 border border-rose-800/60 cursor-not-allowed";
           break;
+
         case "EXCEEDS_BALANCE":
           btnAction.disabled = true;
           btnActionText.textContent = "Saldo Insuficiente en Billetera";
           btnAction.className = "w-full py-4 px-6 rounded-2xl font-bold text-base sm:text-lg bg-amber-950/60 text-amber-300 border border-amber-800/60 cursor-not-allowed";
           break;
+
         case "READY":
           btnAction.disabled = false;
-          btnActionText.textContent = currentMode === 'USDT_TO_DLATAM' 
-            ? "Intercambiar USDT por DLATAM" 
-            : "Intercambiar DLATAM por USDT";
+          btnActionText.textContent = `Intercambiar ${montoBruto.toFixed(2)} ${tokenIn} ➔ Recibir ${valorNeto.toFixed(decimalsToShow)} ${simboloSalida}`;
           btnAction.className = "w-full py-4 px-6 rounded-2xl font-bold text-base sm:text-lg transition-all duration-200 flex items-center justify-center space-x-3 bg-gradient-to-r from-cyan-500 via-teal-500 to-emerald-500 hover:from-cyan-400 hover:to-emerald-400 text-slate-950 shadow-xl shadow-cyan-500/20 active:scale-[0.98]";
           break;
       }
@@ -648,7 +774,7 @@
           inputTokenBalance.textContent = balanceDLATAM.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 4 });
           outputTokenBalance.textContent = balanceUSDT.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 4 });
           userBalancePreview.textContent = balanceDLATAM.toFixed(2);
-          userBalancePreviewSymbol.textContent = "DLATAM";
+          userBalancePreviewSymbol.textContent = "$-LATAM";
         }
       } catch (err) {
         console.error("Error saldos:", err);
@@ -672,6 +798,12 @@
         return;
       }
 
+      // Validación estricta del límite mínimo de 5 unidades
+      if (montoBruto < MONTO_MINIMO) {
+        mostrarToast("error", `El límite mínimo de intercambio es de ${MONTO_MINIMO}.00 unidades.`);
+        return;
+      }
+
       const { fee } = calcularComision(montoBruto);
       if (montoBruto - fee <= 0) {
         mostrarToast("error", "El monto ingresado es insuficiente para cubrir la comisión fija.");
@@ -679,7 +811,7 @@
       }
 
       if (currentMode === 'DLATAM_TO_USDT' && (!DLATAM_ADDRESS || DLATAM_ADDRESS.includes("TU_CONTRATO"))) {
-        mostrarToast("error", "Configura la dirección del contrato DLATAM en las variables de entorno / secretos (VITE_DLATAM_ADDRESS).");
+        mostrarToast("error", "Configura la dirección del contrato $-LATAM en las variables de entorno / secretos (VITE_DLATAM_ADDRESS).");
         return;
       }
 
@@ -774,21 +906,25 @@
         iconInputUsdt.classList.remove('hidden');
         iconInputDlatam.classList.add('hidden');
         symbolInputToken.textContent = "USDT";
+        labelMinLimitBadge.textContent = "Mínimo: 5 USDT";
 
         iconOutputDlatam.classList.remove('hidden');
         iconOutputUsdt.classList.add('hidden');
-        symbolOutputToken.textContent = "DLATAM";
+        symbolOutputToken.textContent = "$-LATAM";
+        rateSummaryBadge.textContent = "1 USDT = 1 $-LATAM";
       } else {
         tabDlatamToUsdt.className = "flex-1 py-2.5 px-3 rounded-xl text-xs sm:text-sm font-semibold transition-all flex items-center justify-center space-x-2 bg-gradient-to-r from-emerald-500 to-teal-500 text-slate-950 shadow-md";
         tabUsdtToDlatam.className = "flex-1 py-2.5 px-3 rounded-xl text-xs sm:text-sm font-semibold transition-all flex items-center justify-center space-x-2 text-slate-400 hover:text-slate-200";
 
         iconInputUsdt.classList.add('hidden');
         iconInputDlatam.classList.remove('hidden');
-        symbolInputToken.textContent = "DLATAM";
+        symbolInputToken.textContent = "$-LATAM";
+        labelMinLimitBadge.textContent = "Mínimo: 5 $-LATAM";
 
         iconOutputDlatam.classList.add('hidden');
         iconOutputUsdt.classList.remove('hidden');
         symbolOutputToken.textContent = "USDT";
+        rateSummaryBadge.textContent = "1 $-LATAM = 1 USDT";
       }
 
       inputAmount.value = "";
@@ -798,7 +934,7 @@
     }
 
     // ==========================================
-    // AGREGAR TOKEN A METAMASK
+    // AGREGAR TOKEN A METAMASK ($-LATAM)
     // ==========================================
     async function agregarTokenMetamask() {
       if (!window.ethereum) {
@@ -806,7 +942,7 @@
         return;
       }
       if (!DLATAM_ADDRESS || DLATAM_ADDRESS.includes("TU_CONTRATO")) {
-        mostrarToast("warning", "Configura la dirección de DLATAM en los secretos/variables de entorno (VITE_DLATAM_ADDRESS).");
+        mostrarToast("warning", "Configura la dirección de $-LATAM en los secretos/variables de entorno (VITE_DLATAM_ADDRESS).");
         return;
       }
 
@@ -817,13 +953,13 @@
             type: 'ERC20',
             options: {
               address: DLATAM_ADDRESS,
-              symbol: 'DLATAM',
+              symbol: '$-LATAM',
               decimals: DLATAM_DECIMALS,
               image: 'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/binance/info/logo.png',
             },
           },
         });
-        mostrarToast("success", "Solicitud de token enviada a tu billetera.");
+        mostrarToast("success", "Solicitud de token $-LATAM enviada a tu billetera.");
       } catch (error) {
         console.error(error);
       }
@@ -872,21 +1008,35 @@
 
       btnMaxBalance.addEventListener('click', () => {
         const balance = currentMode === 'USDT_TO_DLATAM' ? balanceUSDT : balanceDLATAM;
-        if (balance > 0) {
-          inputAmount.value = balance.toString();
-          actualizarCalculoVisual();
-        } else {
+        const simbolo = currentMode === 'USDT_TO_DLATAM' ? 'USDT' : '$-LATAM';
+
+        if (balance <= 0) {
           mostrarToast("info", "No posees saldo en este token.");
+          return;
         }
+
+        if (balance < MONTO_MINIMO) {
+          mostrarToast("warning", `Tu saldo (${balance.toFixed(2)} ${simbolo}) es menor al monto mínimo de ${MONTO_MINIMO} unidades.`);
+        }
+
+        inputAmount.value = balance.toString();
+        actualizarCalculoVisual();
       });
 
       document.querySelectorAll('.btn-pct').forEach(btn => {
         btn.addEventListener('click', (e) => {
           const pct = parseFloat(e.currentTarget.getAttribute('data-pct'));
           const balance = currentMode === 'USDT_TO_DLATAM' ? balanceUSDT : balanceDLATAM;
+          const simbolo = currentMode === 'USDT_TO_DLATAM' ? 'USDT' : '$-LATAM';
+
           if (balance > 0) {
-            inputAmount.value = (balance * pct).toFixed(4);
+            const calculated = (balance * pct).toFixed(4);
+            inputAmount.value = calculated;
             actualizarCalculoVisual();
+
+            if (parseFloat(calculated) < MONTO_MINIMO) {
+              mostrarToast("warning", `El monto seleccionado (${calculated} ${simbolo}) es menor al mínimo de ${MONTO_MINIMO} unidades.`);
+            }
           }
         });
       });
