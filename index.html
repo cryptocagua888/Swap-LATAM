@@ -426,6 +426,8 @@
     let isProcessing = false;
     let balanceUSDT = 0;
     let balanceDLATAM = 0;
+    let allowanceUSDT = 0n;
+    let allowanceDLATAM = 0n;
 
     // 4. ELEMENTOS DEL DOM
     const btnConnectWallet = document.getElementById('btnConnectWallet');
@@ -595,8 +597,22 @@
       summaryNetAmount.textContent = `${valorNeto.toFixed(decimalsToShow)} ${simboloSalida}`;
       summaryNetAmount.className = "font-mono font-bold text-lg text-emerald-400";
 
+      const currentAllowance = currentMode === 'USDT_TO_DLATAM' ? allowanceUSDT : allowanceDLATAM;
+      const tokenDecimals = currentMode === 'USDT_TO_DLATAM' ? USDT_DECIMALS : DLATAM_DECIMALS;
+      let isAlreadyApproved = false;
+      try {
+        const reqAmount = ethers.parseUnits(montoBruto.toString(), tokenDecimals);
+        isAlreadyApproved = currentAllowance >= reqAmount;
+      } catch (e) {
+        isAlreadyApproved = false;
+      }
+
       receiptAlertIcon.textContent = "✅";
-      receiptAlertText.innerHTML = `<strong>Vas a recibir exactamente:</strong> <span class="text-emerald-300 font-bold">${valorNeto.toFixed(decimalsToShow)} ${simboloSalida}</span> netos en tu billetera tras confirmarse el intercambio.`;
+      if (isAlreadyApproved) {
+        receiptAlertText.innerHTML = `<strong>Vas a recibir exactamente:</strong> <span class="text-emerald-300 font-bold">${valorNeto.toFixed(decimalsToShow)} ${simboloSalida}</span> netos en tu billetera. <span class="text-emerald-400/90 block mt-1 text-[11px]">✨ Tokens ya autorizados: la operación se realiza en <strong>1 sola firma directa</strong>.</span>`;
+      } else {
+        receiptAlertText.innerHTML = `<strong>Vas a recibir exactamente:</strong> <span class="text-emerald-300 font-bold">${valorNeto.toFixed(decimalsToShow)} ${simboloSalida}</span> netos en tu billetera. <span class="text-cyan-400/90 block mt-1 text-[11px]">ℹ️ Autorización inicial requerida en MetaMask (Paso 1: Aprobar gasto, Paso 2: Intercambiar).</span>`;
+      }
       receiptDynamicAlert.className = "mt-3 p-3 rounded-xl text-xs flex items-center space-x-2.5 bg-emerald-950/40 text-emerald-200 border border-emerald-500/40";
 
       // Validar si el usuario tiene saldo suficiente
@@ -604,7 +620,7 @@
       if (userAddress && montoBruto > balanceActual) {
         actualizarEstadoBoton("EXCEEDS_BALANCE");
       } else {
-        actualizarEstadoBoton("READY", montoBruto, valorNeto, decimalsToShow, simboloSalida);
+        actualizarEstadoBoton("READY", montoBruto, valorNeto, decimalsToShow, simboloSalida, isAlreadyApproved);
       }
     }
 
@@ -615,7 +631,7 @@
       activeTierIndicator.className = "text-[11px] font-bold text-emerald-400";
     }
 
-    function actualizarEstadoBoton(estado, montoBruto, valorNeto, decimalsToShow, simboloSalida) {
+    function actualizarEstadoBoton(estado, montoBruto, valorNeto, decimalsToShow, simboloSalida, isAlreadyApproved) {
       if (isProcessing) return;
 
       if (!userAddress) {
@@ -654,7 +670,11 @@
 
         case "READY":
           btnAction.disabled = false;
-          btnActionText.textContent = `Intercambiar ${montoBruto.toFixed(2)} ${tokenIn} ➔ Recibir ${valorNeto.toFixed(decimalsToShow)} ${simboloSalida}`;
+          if (isAlreadyApproved) {
+            btnActionText.textContent = `Intercambiar ${montoBruto.toFixed(2)} ${tokenIn} ➔ Recibir ${valorNeto.toFixed(decimalsToShow)} ${simboloSalida}`;
+          } else {
+            btnActionText.textContent = `1. Autorizar ${tokenIn} ➔ 2. Intercambiar por ${simboloSalida}`;
+          }
           btnAction.className = "w-full py-4 px-6 rounded-2xl font-bold text-base sm:text-lg transition-all duration-200 flex items-center justify-center space-x-3 bg-gradient-to-r from-cyan-500 via-teal-500 to-emerald-500 hover:from-cyan-400 hover:to-emerald-400 text-slate-950 shadow-xl shadow-cyan-500/20 active:scale-[0.98]";
           break;
       }
@@ -806,16 +826,25 @@
         const rawUSDT = await usdtContract.balanceOf(userAddress);
         balanceUSDT = parseFloat(ethers.formatUnits(rawUSDT, USDT_DECIMALS));
 
+        try {
+          allowanceUSDT = await usdtContract.allowance(userAddress, CAMBIADOR_ADDRESS);
+        } catch (e) {
+          allowanceUSDT = 0n;
+        }
+
         if (DLATAM_ADDRESS && DLATAM_ADDRESS.startsWith('0x') && DLATAM_ADDRESS.length === 42) {
           try {
             const dlatamContract = new ethers.Contract(DLATAM_ADDRESS, ERC20_ABI, provider);
             const rawDLATAM = await dlatamContract.balanceOf(userAddress);
             balanceDLATAM = parseFloat(ethers.formatUnits(rawDLATAM, DLATAM_DECIMALS));
+            allowanceDLATAM = await dlatamContract.allowance(userAddress, CAMBIADOR_ADDRESS);
           } catch (e) {
             balanceDLATAM = 0;
+            allowanceDLATAM = 0n;
           }
         } else {
           balanceDLATAM = 0;
+          allowanceDLATAM = 0n;
         }
 
         if (currentMode === 'USDT_TO_DLATAM') {
@@ -838,6 +867,8 @@
     // FLUJO DE 2 PASOS (APPROVE + SWAP)
     // ==========================================
     async function ejecutarIntercambio() {
+      if (isProcessing) return;
+
       if (!userAddress) {
         await conectarBilletera();
         return;
@@ -879,28 +910,42 @@
 
         const tokenAddress = currentMode === 'USDT_TO_DLATAM' ? USDT_ADDRESS : DLATAM_ADDRESS;
         const decimals = currentMode === 'USDT_TO_DLATAM' ? USDT_DECIMALS : DLATAM_DECIMALS;
+        const tokenIn = currentMode === 'USDT_TO_DLATAM' ? 'USDT' : '$-LATAM';
+        const tokenOut = currentMode === 'USDT_TO_DLATAM' ? '$-LATAM' : 'USDT';
         const montoFormateado = ethers.parseUnits(rawAmount, decimals);
 
         const tokenContract = new ethers.Contract(tokenAddress, ERC20_ABI, signer);
         
-        // PASO 1: Aprobación de tokens (Approve)
-        btnActionText.textContent = "Aprobando tokens...";
-        txStatusTitle.textContent = "Paso 1 de 2: Autorización (Approve)";
-        txStepBadge.textContent = "Paso 1/2";
-        txStatusDesc.textContent = `Autorizando al contrato Cambiador en tu billetera...`;
-        mostrarToast("info", "Paso 1: Solicitando aprobación del token...");
+        // 1. Verificar si ya tenemos permiso (allowance) suficiente
+        const currentAllowance = await tokenContract.allowance(userAddress, CAMBIADOR_ADDRESS);
 
-        const approveTx = await tokenContract.approve(CAMBIADOR_ADDRESS, montoFormateado);
-        txStatusDesc.textContent = "Confirmando aprobación en la cadena de bloques BSC...";
-        await approveTx.wait();
+        if (currentAllowance < montoFormateado) {
+          // PASO 1: Aprobación de tokens (Solo si no está aprobado)
+          btnActionText.textContent = "Paso 1/2: Aprobando en MetaMask...";
+          txStatusTitle.textContent = "Paso 1 de 2: Autorización de Tokens";
+          txStepBadge.textContent = "Paso 1/2";
+          txStatusDesc.textContent = `Acepta la autorización en MetaMask para permitir el intercambio de tus ${tokenIn}. (Solo se solicita la primera vez).`;
+          mostrarToast("info", `Paso 1 de 2: Confirma la autorización de ${tokenIn} en MetaMask.`);
 
-        mostrarToast("success", "Paso 1 completado: Tokens autorizados.");
+          // Aprobamos MaxUint256 para que el usuario NUNCA MÁS tenga que volver a aprobar en futuros swaps (estándar DeFi)
+          const approveTx = await tokenContract.approve(CAMBIADOR_ADDRESS, ethers.MaxUint256);
+          txStatusDesc.textContent = "Confirmando autorización en la blockchain BNB Smart Chain...";
+          await approveTx.wait();
+
+          if (currentMode === 'USDT_TO_DLATAM') allowanceUSDT = ethers.MaxUint256;
+          else allowanceDLATAM = ethers.MaxUint256;
+
+          mostrarToast("success", `Paso 1 completado. Ahora confirma el Paso 2 en MetaMask para recibir tus ${tokenOut}.`);
+        } else {
+          console.log("Tokens ya autorizados con allowance suficiente. Saltando Paso 1.");
+        }
 
         // PASO 2: Procesamiento del Intercambio (Swap)
-        btnActionText.textContent = "Procesando Intercambio...";
-        txStatusTitle.textContent = "Paso 2 de 2: Ejecutando Intercambio";
-        txStepBadge.textContent = "Paso 2/2";
-        txStatusDesc.textContent = "Confirmando el swap con el contrato Cambiador...";
+        btnActionText.textContent = "Confirmando Intercambio en MetaMask...";
+        txStatusTitle.textContent = currentAllowance < montoFormateado ? "Paso 2 de 2: Ejecutando Intercambio" : "Ejecutando Intercambio";
+        txStepBadge.textContent = currentAllowance < montoFormateado ? "Paso 2/2" : "Paso Único";
+        txStatusDesc.textContent = `Confirma la transacción final en MetaMask para recibir tus ${tokenOut}...`;
+        mostrarToast("info", `Confirma el intercambio en MetaMask para recibir tus ${tokenOut}.`);
 
         const cambiadorContract = new ethers.Contract(CAMBIADOR_ADDRESS, CAMBIADOR_ABI, signer);
         let swapTx;
@@ -911,15 +956,15 @@
           swapTx = await cambiadorContract.cambiarDLATAMporUSDT(montoFormateado);
         }
 
-        txStatusDesc.textContent = "Minando transacción en BSC...";
+        txStatusDesc.textContent = "Minando intercambio en BSC...";
         txExplorerLink.href = `https://bscscan.com/tx/${swapTx.hash}`;
         txExplorerLink.classList.remove('hidden');
 
         const receipt = await swapTx.wait();
 
-        mostrarToast("success", `¡Intercambio exitoso! Bloque #${receipt.blockNumber}`);
+        mostrarToast("success", `¡Intercambio exitoso! Recibiste tus ${tokenOut}. Bloque #${receipt.blockNumber}`);
         txStatusTitle.textContent = "¡Transacción Exitosa!";
-        txStatusDesc.textContent = "Tokens intercambiados y transferidos a tu billetera.";
+        txStatusDesc.textContent = `Tus ${tokenOut} han sido transferidos a tu billetera.`;
 
         inputAmount.value = "";
         outputAmount.value = "";
