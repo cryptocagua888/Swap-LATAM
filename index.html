@@ -660,25 +660,65 @@
       }
     }
 
+    let isConnecting = false;
+
     // ==========================================
     // CONEXIÓN WEB3 & CAMBIO DE RED
     // ==========================================
+    async function verificarConexionExistente() {
+      if (!window.ethereum) return;
+      try {
+        const accounts = await window.ethereum.request({ method: 'eth_accounts' });
+        if (accounts && accounts.length > 0) {
+          provider = new ethers.BrowserProvider(window.ethereum);
+          signer = await provider.getSigner();
+          userAddress = accounts[0];
+
+          userWalletAddress.textContent = `${userAddress.substring(0, 6)}...${userAddress.substring(userAddress.length - 4)}`;
+          btnConnectWallet.classList.add('hidden');
+          walletConnectedCard.classList.remove('hidden');
+          walletConnectedCard.classList.add('flex');
+
+          await cargarSaldos();
+          actualizarCalculoVisual();
+        }
+      } catch (err) {
+        console.warn("Error en auto-detección:", err);
+      }
+    }
+
     async function conectarBilletera() {
+      if (isConnecting) {
+        mostrarToast("warning", "Ya hay una conexión en curso. Por favor revisa la ventana de MetaMask.");
+        return;
+      }
+
       try {
         if (!window.ethereum) {
           mostrarToast("error", "No se detectó billetera Web3 (MetaMask/TrustWallet). Por favor instala una extensión.");
           return;
         }
 
-        btnActionText.textContent = "Conectando...";
+        isConnecting = true;
+        btnActionText.textContent = "Revisa tu MetaMask...";
         btnSpinner.classList.remove('hidden');
 
         provider = new ethers.BrowserProvider(window.ethereum);
-        const accounts = await provider.send("eth_requestAccounts", []);
-        if (accounts.length === 0) throw new Error("No se seleccionó ninguna cuenta.");
+
+        // 1. Revisar si la cuenta ya está autorizada sin disparar popup
+        let accounts = await window.ethereum.request({ method: 'eth_accounts' });
+
+        // 2. Si no hay cuentas autorizadas, solicitar permisos
+        if (!accounts || accounts.length === 0) {
+          accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+        }
+
+        if (!accounts || accounts.length === 0) {
+          throw new Error("No se seleccionó ninguna cuenta.");
+        }
 
         signer = await provider.getSigner();
-        userAddress = await signer.getAddress();
+        userAddress = accounts[0];
 
         await verificarYCambiarRedBSC();
 
@@ -691,9 +731,22 @@
         await cargarSaldos();
 
       } catch (err) {
-        console.error("Error al conectar:", err);
-        mostrarToast("error", err.message || "Error al conectar la billetera");
+        console.warn("Detalle de conexión Web3:", err);
+
+        const errCode = err?.code || err?.error?.code;
+        const errMsg = (err?.message || "").toLowerCase();
+
+        // Control específico del error -32002: Solicitud pendiente en MetaMask
+        if (errCode === -32002 || errMsg.includes("-32002") || errMsg.includes("already pending")) {
+          mostrarToast("warning", "Hay una solicitud pendiente en MetaMask. Por favor abre la extensión de tu billetera en el navegador para aprobarla.");
+          btnActionText.textContent = "Revisa tu MetaMask";
+        } else if (errCode === 4001 || errMsg.includes("user rejected") || errMsg.includes("denied")) {
+          mostrarToast("info", "Conexión rechazada por el usuario.");
+        } else {
+          mostrarToast("error", err?.shortMessage || err?.message || "Error al conectar la billetera");
+        }
       } finally {
+        isConnecting = false;
         btnSpinner.classList.add('hidden');
         actualizarCalculoVisual();
       }
@@ -1060,6 +1113,8 @@
       }
 
       actualizarCalculoVisual();
+      // Auto-detección silenciosa si el usuario ya autorizó la app previamente
+      verificarConexionExistente();
     });
   </script>
 </body>
