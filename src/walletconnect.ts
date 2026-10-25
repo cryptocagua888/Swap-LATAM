@@ -46,6 +46,12 @@ function patchFetchPrototype() {
 export async function setupWalletConnect(projectId: string) {
   patchFetchPrototype();
 
+  const cleanId = (projectId || '').trim();
+  if (!cleanId || cleanId === '3fcc6bba2d1de9622da6d114a8a366cb' || cleanId.length < 16) {
+    console.warn("WalletConnect: Project ID no configurado o es el placeholder de prueba.");
+    return null;
+  }
+
   const { createWeb3Modal, defaultConfig } = await import('@web3modal/ethers');
 
   const bsc = {
@@ -59,7 +65,7 @@ export async function setupWalletConnect(projectId: string) {
   const metadata = {
     name: 'Dólar LATAM ($-LATAM)',
     description: 'Swap oficial de $-LATAM y USDT en BNB Smart Chain',
-    url: typeof window !== 'undefined' ? window.location.origin : '',
+    url: typeof window !== 'undefined' ? window.location.origin : 'https://swap-latam-v2.vercel.app',
     icons: ['https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/binance/info/logo.png']
   };
 
@@ -75,7 +81,7 @@ export async function setupWalletConnect(projectId: string) {
   return createWeb3Modal({
     ethersConfig,
     chains: [bsc],
-    projectId: projectId || '3fcc6bba2d1de9622da6d114a8a366cb',
+    projectId: cleanId,
     enableAnalytics: false,
     themeMode: 'dark',
     themeVariables: {
