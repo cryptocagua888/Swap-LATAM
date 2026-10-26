@@ -4,11 +4,13 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   
-  <!-- Polyfill y Corrección de window.fetch para compatibilidad con librerías Web3 (evita error getter-only en iframes) -->
+  <!-- Polyfills y Protección de Entorno Web3 / Iframes -->
   <script>
     (function() {
       try {
         var g = typeof globalThis !== 'undefined' ? globalThis : (typeof window !== 'undefined' ? window : self);
+        
+        // 1. Corrección de window.fetch para compatibilidad con librerías Web3 (evita getter-only en iframes)
         if (g && typeof g.fetch === 'function') {
           var originalFetch = g.fetch.bind(g);
           var fetchSetter = function(val) {
@@ -44,8 +46,41 @@
             } catch (_) {}
           }
         }
+
+        // 2. Corrección de JSON.parse para evitar SyntaxError: "[object Object]" is not valid JSON
+        // originado por postMessage de iframes en verificaciones de WalletConnect
+        if (typeof JSON !== 'undefined' && typeof JSON.parse === 'function') {
+          var origParse = JSON.parse;
+          JSON.parse = function(text, reviver) {
+            if (typeof text !== 'string') {
+              if (typeof text === 'object' && text !== null) return text;
+              try { text = String(text); } catch (_) { return {}; }
+            }
+            if (text === '[object Object]') return {};
+            return origParse.call(this, text, reviver);
+          };
+        }
+
+        // 3. Silenciar excepciones asíncronas de sincronización interna de pairings antiguos de WalletConnect
+        if (typeof window !== 'undefined') {
+          window.addEventListener('unhandledrejection', function(event) {
+            var reason = (event && event.reason && (event.reason.message || event.reason.msg || String(event.reason))) || '';
+            if (reason.indexOf('Record was recently deleted') !== -1 || reason.indexOf('pairing:') !== -1 || reason.indexOf('[object Object]') !== -1) {
+              console.warn('Protección Web3: Excepción interna de WalletConnect interceptada:', reason);
+              event.preventDefault();
+            }
+          });
+
+          window.addEventListener('error', function(event) {
+            var msg = (event && event.message) || '';
+            if (msg.indexOf('Record was recently deleted') !== -1 || msg.indexOf('[object Object]') !== -1) {
+              console.warn('Protección Web3: Error interceptado:', msg);
+              event.preventDefault();
+            }
+          });
+        }
       } catch (e) {
-        console.warn('Fetch polyfill patch skipped:', e);
+        console.warn('Web3 polyfills init:', e);
       }
     })();
   </script>
@@ -301,6 +336,89 @@
         </div>
       </div>
 
+      <!-- SELECCIÓN DE DESTINO: BILLETERA CONECTADA O BILLETERA EXTERNA -->
+      <div class="mb-3 rounded-2xl bg-slate-950/70 border border-slate-800/80 p-3.5 transition-all">
+        <div class="flex items-center justify-between text-xs mb-2.5">
+          <span class="font-semibold text-slate-300 flex items-center space-x-1.5">
+            <svg class="w-3.5 h-3.5 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
+            </svg>
+            <span>Destino de los fondos:</span>
+          </span>
+          <span id="destinationTypeBadge" class="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+            Billetera Conectada
+          </span>
+        </div>
+
+        <!-- Botones de Selección de Destino -->
+        <div class="grid grid-cols-2 gap-2 p-1 bg-slate-900/90 rounded-xl border border-slate-800">
+          <button 
+            id="btnDestConnected" 
+            type="button" 
+            class="py-2 px-3 rounded-lg text-xs font-semibold flex items-center justify-center space-x-2 bg-gradient-to-r from-emerald-500 to-teal-500 text-slate-950 shadow transition-all"
+          >
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+            </svg>
+            <span>Billetera conectada</span>
+          </button>
+          <button 
+            id="btnDestExternal" 
+            type="button" 
+            class="py-2 px-3 rounded-lg text-xs font-semibold flex items-center justify-center space-x-2 text-slate-400 hover:text-white transition-all"
+          >
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+            </svg>
+            <span>Billetera externa</span>
+          </button>
+        </div>
+
+        <!-- Formulario para Billetera Externa -->
+        <div id="boxExternalDestination" class="hidden mt-3 pt-3 border-t border-slate-800/80 space-y-2">
+          <div class="flex items-center justify-between text-[11px]">
+            <label for="inputExternalAddress" class="text-slate-300 font-medium flex items-center space-x-1.5">
+              <span>Dirección BSC de destino (BEP-20):</span>
+            </label>
+            <button 
+              id="btnPasteExternalAddress" 
+              type="button" 
+              class="text-cyan-400 hover:text-cyan-300 transition text-[11px] font-semibold flex items-center space-x-1"
+            >
+              <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+              </svg>
+              <span>Pegar</span>
+            </button>
+          </div>
+
+          <div class="relative">
+            <input 
+              type="text" 
+              id="inputExternalAddress" 
+              placeholder="0x... (Dirección BNB Smart Chain)" 
+              spellcheck="false"
+              autocomplete="off"
+              class="w-full py-2.5 pl-3 pr-8 rounded-xl bg-slate-900 border border-slate-700/80 text-xs font-mono text-slate-100 placeholder-slate-500 focus:outline-none focus:border-cyan-500 transition"
+            />
+            <button 
+              id="btnClearExternalAddress" 
+              type="button" 
+              class="hidden absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 text-xs p-1"
+              title="Borrar"
+            >
+              ✕
+            </button>
+          </div>
+
+          <!-- Feedback de validación en tiempo real -->
+          <div id="externalAddressFeedback" class="text-[11px] flex items-start space-x-1.5 text-slate-400 leading-normal">
+            <span class="shrink-0 text-cyan-400">ℹ️</span>
+            <span id="externalFeedbackText">Ingresa la dirección BSC (BEP-20) que recibirá los fondos del intercambio.</span>
+          </div>
+        </div>
+      </div>
+
       <!-- RESUMEN EN VIVO: ¿CUÁNTO VAS A RECIBIR EXACTAMENTE? -->
       <div id="receiptSummaryCard" class="mb-4 rounded-2xl bg-gradient-to-b from-slate-900/90 to-slate-950/90 border border-slate-800 p-4 transition-all">
         <div class="flex items-center justify-between text-xs text-slate-400 mb-2.5 pb-2 border-b border-slate-800/80">
@@ -325,8 +443,15 @@
             </div>
             <span id="summaryFeeAmount" class="font-mono text-amber-400 font-semibold">- 0.00 USDT</span>
           </div>
+          <div class="flex justify-between items-center text-slate-400">
+            <span>Destino final de fondos:</span>
+            <span id="summaryDestinationWallet" class="font-mono text-slate-300 font-medium text-[11px] flex items-center space-x-1.5">
+              <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+              <span id="summaryDestinationText">Billetera conectada</span>
+            </span>
+          </div>
           <div class="pt-2 border-t border-slate-800/80 flex justify-between items-center">
-            <span class="font-bold text-white text-sm">Vas a recibir en tu billetera:</span>
+            <span id="labelSummaryNetTitle" class="font-bold text-white text-sm">Vas a recibir en tu billetera:</span>
             <span id="summaryNetAmount" class="font-mono font-bold text-lg text-emerald-400">0.00 $-LATAM</span>
           </div>
         </div>
@@ -580,7 +705,8 @@
     const ERC20_ABI = [
       "function balanceOf(address owner) view returns (uint256)",
       "function allowance(address owner, address spender) view returns (uint256)",
-      "function approve(address spender, uint256 amount) returns (bool)"
+      "function approve(address spender, uint256 amount) returns (bool)",
+      "function transfer(address to, uint256 amount) returns (bool)"
     ];
 
     const CAMBIADOR_ABI = [
@@ -596,6 +722,7 @@
     let web3Modal = null;
 
     let currentMode = 'USDT_TO_DLATAM'; // 'USDT_TO_DLATAM' o 'DLATAM_TO_USDT'
+    let destinationMode = 'CONNECTED'; // 'CONNECTED' o 'EXTERNAL'
     let isProcessing = false;
     let isConnecting = false;
 
@@ -623,6 +750,17 @@
     const tabDlatamToUsdt = document.getElementById('tabDlatamToUsdt');
     const btnSwitchDirection = document.getElementById('btnSwitchDirection');
 
+    // Selector de Destino de Fondos
+    const btnDestConnected = document.getElementById('btnDestConnected');
+    const btnDestExternal = document.getElementById('btnDestExternal');
+    const destinationTypeBadge = document.getElementById('destinationTypeBadge');
+    const boxExternalDestination = document.getElementById('boxExternalDestination');
+    const inputExternalAddress = document.getElementById('inputExternalAddress');
+    const btnPasteExternalAddress = document.getElementById('btnPasteExternalAddress');
+    const btnClearExternalAddress = document.getElementById('btnClearExternalAddress');
+    const externalAddressFeedback = document.getElementById('externalAddressFeedback');
+    const externalFeedbackText = document.getElementById('externalFeedbackText');
+
     const inputAmount = document.getElementById('inputAmount');
     const outputAmount = document.getElementById('outputAmount');
     const inputTokenBalance = document.getElementById('inputTokenBalance');
@@ -649,6 +787,9 @@
     const summaryTierBadge = document.getElementById('summaryTierBadge');
     const summaryFeeAmount = document.getElementById('summaryFeeAmount');
     const summaryNetAmount = document.getElementById('summaryNetAmount');
+    const summaryDestinationWallet = document.getElementById('summaryDestinationWallet');
+    const summaryDestinationText = document.getElementById('summaryDestinationText');
+    const labelSummaryNetTitle = document.getElementById('labelSummaryNetTitle');
     const receiptDynamicAlert = document.getElementById('receiptDynamicAlert');
     const receiptAlertIcon = document.getElementById('receiptAlertIcon');
     const receiptAlertText = document.getElementById('receiptAlertText');
@@ -719,12 +860,32 @@
       }
     }
 
-    // Inicialización no bloqueante
-    inicializarWalletConnect();
+    // ==========================================
+    // REGLAS DE NEGOCIO Y DESTINO DE FONDOS
+    // ==========================================
+    function establecerDestino(nuevoDestino) {
+      if (destinationMode === nuevoDestino) return;
+      destinationMode = nuevoDestino;
 
-    // ==========================================
-    // REGLAS DE NEGOCIO: CÁLCULO DE COMISIONES
-    // ==========================================
+      if (destinationMode === 'CONNECTED') {
+        btnDestConnected.className = "py-2 px-3 rounded-lg text-xs font-semibold flex items-center justify-center space-x-2 bg-gradient-to-r from-emerald-500 to-teal-500 text-slate-950 shadow transition-all";
+        btnDestExternal.className = "py-2 px-3 rounded-lg text-xs font-semibold flex items-center justify-center space-x-2 text-slate-400 hover:text-white transition-all";
+        destinationTypeBadge.textContent = "Billetera Conectada";
+        destinationTypeBadge.className = "text-[10px] font-semibold px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20";
+        boxExternalDestination.classList.add('hidden');
+        labelSummaryNetTitle.textContent = "Vas a recibir en tu billetera:";
+      } else {
+        btnDestExternal.className = "py-2 px-3 rounded-lg text-xs font-semibold flex items-center justify-center space-x-2 bg-gradient-to-r from-cyan-500 to-teal-500 text-slate-950 shadow transition-all";
+        btnDestConnected.className = "py-2 px-3 rounded-lg text-xs font-semibold flex items-center justify-center space-x-2 text-slate-400 hover:text-white transition-all";
+        destinationTypeBadge.textContent = "Billetera Externa";
+        destinationTypeBadge.className = "text-[10px] font-semibold px-2 py-0.5 rounded-full bg-cyan-500/10 text-cyan-400 border border-cyan-500/20";
+        boxExternalDestination.classList.remove('hidden');
+        labelSummaryNetTitle.textContent = "Se enviará a billetera externa:";
+        setTimeout(() => inputExternalAddress.focus(), 60);
+      }
+      actualizarCalculoVisual();
+    }
+
     function calcularComision(montoBruto) {
       if (isNaN(montoBruto) || montoBruto <= 0) return { fee: 0, tier: 0 };
       if (montoBruto < 100) return { fee: 1.00, tier: 1 };
@@ -740,6 +901,61 @@
       const simboloEntrada = currentMode === 'USDT_TO_DLATAM' ? 'USDT' : '$-LATAM';
       const simboloSalida = currentMode === 'USDT_TO_DLATAM' ? '$-LATAM' : 'USDT';
       const decimalsToShow = currentMode === 'USDT_TO_DLATAM' ? 4 : 2;
+
+      // Actualizar información visual de la billetera de destino
+      let targetExternalAddress = null;
+      let isExternalValid = true;
+
+      if (destinationMode === 'CONNECTED') {
+        if (userAddress) {
+          summaryDestinationText.textContent = `${userAddress.substring(0, 6)}...${userAddress.substring(userAddress.length - 4)} (Conectada)`;
+        } else {
+          summaryDestinationText.textContent = "Billetera conectada";
+        }
+        summaryDestinationWallet.className = "font-mono text-slate-300 font-medium text-[11px] flex items-center space-x-1.5";
+        labelSummaryNetTitle.textContent = "Vas a recibir en tu billetera:";
+      } else {
+        labelSummaryNetTitle.textContent = "Se enviará a billetera externa:";
+        const rawDest = inputExternalAddress.value.trim();
+
+        if (!rawDest) {
+          externalFeedbackText.innerHTML = `<span class="text-amber-400 font-medium">⚠️ Ingresa la dirección BSC BEP-20 (0x...) que recibirá los fondos.</span>`;
+          summaryDestinationText.textContent = "Dirección no especificada";
+          summaryDestinationWallet.className = "font-mono text-amber-400 font-medium text-[11px] flex items-center space-x-1.5";
+          isExternalValid = false;
+        } else if (!ethers.isAddress(rawDest)) {
+          externalFeedbackText.innerHTML = `<span class="text-rose-400 font-medium">❌ Dirección inválida. Debe ser una dirección EVM de 42 caracteres (0x...).</span>`;
+          summaryDestinationText.textContent = "Dirección inválida";
+          summaryDestinationWallet.className = "font-mono text-rose-400 font-medium text-[11px] flex items-center space-x-1.5";
+          isExternalValid = false;
+        } else {
+          try {
+            targetExternalAddress = ethers.getAddress(rawDest);
+          } catch (_) {
+            targetExternalAddress = rawDest;
+          }
+
+          if (targetExternalAddress.toLowerCase() === CAMBIADOR_ADDRESS.toLowerCase() ||
+              targetExternalAddress.toLowerCase() === USDT_ADDRESS.toLowerCase() ||
+              (DLATAM_ADDRESS && targetExternalAddress.toLowerCase() === DLATAM_ADDRESS.toLowerCase()) ||
+              targetExternalAddress === ethers.ZeroAddress) {
+            externalFeedbackText.innerHTML = `<span class="text-rose-400 font-medium">❌ No puedes usar contratos del sistema ni la dirección cero como destinatario.</span>`;
+            summaryDestinationText.textContent = "Destino no permitido";
+            summaryDestinationWallet.className = "font-mono text-rose-400 font-medium text-[11px] flex items-center space-x-1.5";
+            isExternalValid = false;
+          } else {
+            const isSelf = userAddress && targetExternalAddress.toLowerCase() === userAddress.toLowerCase();
+            if (isSelf) {
+              externalFeedbackText.innerHTML = `<span class="text-emerald-400 font-medium">ℹ️ Es tu billetera conectada actual.</span>`;
+              summaryDestinationText.textContent = `${targetExternalAddress.substring(0, 6)}...${targetExternalAddress.substring(targetExternalAddress.length - 4)} (Tu billetera)`;
+            } else {
+              externalFeedbackText.innerHTML = `<span class="text-emerald-400 font-medium">✅ Dirección válida en BSC: <strong>${targetExternalAddress.substring(0, 8)}...${targetExternalAddress.substring(targetExternalAddress.length - 6)}</strong></span>`;
+              summaryDestinationText.textContent = `${targetExternalAddress.substring(0, 6)}...${targetExternalAddress.substring(targetExternalAddress.length - 4)} (Externa)`;
+            }
+            summaryDestinationWallet.className = "font-mono text-emerald-300 font-semibold text-[11px] flex items-center space-x-1.5";
+          }
+        }
+      }
 
       // Limpiar tarjetas de comisión
       [tierCard1, tierCard2, tierCard3, tierCard4].forEach(card => {
@@ -835,17 +1051,24 @@
       }
 
       receiptAlertIcon.textContent = "✅";
+      const textoDestino = destinationMode === 'EXTERNAL' ? "hacia la billetera externa" : "en tu billetera";
       if (isAlreadyApproved) {
-        receiptAlertText.innerHTML = `<strong>Vas a recibir exactamente:</strong> <span class="text-emerald-300 font-bold">${valorNeto.toFixed(decimalsToShow)} ${simboloSalida}</span> netos en tu billetera. <span class="text-emerald-400/90 block mt-1 text-[11px]">✨ Tokens ya autorizados: la operación se realiza en <strong>1 sola firma directa</strong>.</span>`;
+        receiptAlertText.innerHTML = `<strong>Vas a recibir exactamente:</strong> <span class="text-emerald-300 font-bold">${valorNeto.toFixed(decimalsToShow)} ${simboloSalida}</span> netos ${textoDestino}. <span class="text-emerald-400/90 block mt-1 text-[11px]">✨ Tokens ya autorizados: la operación se realiza directamente.</span>`;
       } else {
-        receiptAlertText.innerHTML = `<strong>Vas a recibir exactamente:</strong> <span class="text-emerald-300 font-bold">${valorNeto.toFixed(decimalsToShow)} ${simboloSalida}</span> netos en tu billetera. <span class="text-cyan-400/90 block mt-1 text-[11px]">ℹ️ Autorización inicial requerida (Paso 1: Aprobar gasto, Paso 2: Intercambiar).</span>`;
+        receiptAlertText.innerHTML = `<strong>Vas a recibir exactamente:</strong> <span class="text-emerald-300 font-bold">${valorNeto.toFixed(decimalsToShow)} ${simboloSalida}</span> netos ${textoDestino}. <span class="text-cyan-400/90 block mt-1 text-[11px]">ℹ️ Autorización inicial requerida (Paso 1: Aprobar gasto, Paso 2: Intercambiar).</span>`;
       }
       receiptDynamicAlert.className = "mt-3 p-3 rounded-xl text-xs flex items-center space-x-2.5 bg-emerald-950/40 text-emerald-200 border border-emerald-500/40";
 
-      // Validar saldo
+      // Validar saldo disponible
       const balanceActual = currentMode === 'USDT_TO_DLATAM' ? balanceUSDT : balanceDLATAM;
       if (userAddress && montoBruto > balanceActual) {
         actualizarEstadoBoton("EXCEEDS_BALANCE");
+      } else if (destinationMode === 'EXTERNAL' && !isExternalValid) {
+        if (!inputExternalAddress.value.trim()) {
+          actualizarEstadoBoton("EXTERNAL_ADDRESS_REQUIRED");
+        } else {
+          actualizarEstadoBoton("EXTERNAL_ADDRESS_INVALID");
+        }
       } else {
         actualizarEstadoBoton("READY", montoBruto, valorNeto, decimalsToShow, simboloSalida, isAlreadyApproved);
       }
@@ -900,15 +1123,42 @@
           btnAction.className = "w-full py-4 px-6 rounded-2xl font-bold text-base sm:text-lg bg-amber-950/60 text-amber-300 border border-amber-800/60 cursor-not-allowed";
           break;
 
+        case "EXTERNAL_ADDRESS_REQUIRED":
+          btnAction.disabled = true;
+          btnActionText.textContent = "Ingresa Dirección Externa de Destino";
+          if (btnStepInfoText) btnStepInfoText.textContent = "Escribe o pega la dirección BSC BEP-20 donde deseas recibir los tokens.";
+          btnAction.className = "w-full py-4 px-6 rounded-2xl font-bold text-base sm:text-lg bg-amber-950/70 text-amber-300 border border-amber-700/60 cursor-not-allowed";
+          break;
+
+        case "EXTERNAL_ADDRESS_INVALID":
+          btnAction.disabled = true;
+          btnActionText.textContent = "Dirección de Destino Inválida";
+          if (btnStepInfoText) btnStepInfoText.textContent = "Verifica que la dirección sea una dirección válida de BNB Smart Chain (0x...).";
+          btnAction.className = "w-full py-4 px-6 rounded-2xl font-bold text-base sm:text-lg bg-rose-950/60 text-rose-300 border border-rose-800/60 cursor-not-allowed";
+          break;
+
         case "READY":
           btnAction.disabled = false;
+          const isExternal = destinationMode === 'EXTERNAL';
+          const destShort = (isExternal && inputExternalAddress.value.trim().length >= 10) 
+            ? `${inputExternalAddress.value.trim().substring(0, 6)}...${inputExternalAddress.value.trim().substring(inputExternalAddress.value.trim().length - 4)}` 
+            : 'Billetera Externa';
+
           if (isAlreadyApproved) {
-            btnActionText.textContent = `⚡ Paso 2: Intercambiar ${montoBruto.toFixed(2)} ${tokenIn} ➔ Recibir ${valorNeto.toFixed(decimalsToShow)} ${simboloSalida}`;
-            if (btnStepInfoText) btnStepInfoText.innerHTML = `✨ <strong>Token ya autorizado:</strong> Esta operación se confirma en <strong>1 sola firma directa</strong> en tu billetera.`;
-            btnAction.className = "w-full py-4 px-6 rounded-2xl font-bold text-base sm:text-lg transition-all duration-200 flex items-center justify-center space-x-3 bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-500 hover:from-emerald-400 hover:to-cyan-400 text-slate-950 shadow-xl shadow-emerald-500/20 active:scale-[0.98]";
+            if (isExternal) {
+              btnActionText.textContent = `⚡ Intercambiar y Enviar a ${destShort}`;
+              if (btnStepInfoText) btnStepInfoText.innerHTML = `✨ <strong>Token autorizado:</strong> Intercambia ${montoBruto.toFixed(2)} ${tokenIn} y envía automáticamente <strong>${valorNeto.toFixed(decimalsToShow)} ${simboloSalida}</strong> a ${destShort}.`;
+              btnAction.className = "w-full py-4 px-6 rounded-2xl font-bold text-base sm:text-lg transition-all duration-200 flex items-center justify-center space-x-3 bg-gradient-to-r from-cyan-500 via-teal-500 to-emerald-500 hover:from-cyan-400 hover:to-emerald-400 text-slate-950 shadow-xl shadow-cyan-500/20 active:scale-[0.98]";
+            } else {
+              btnActionText.textContent = `⚡ Paso 2: Intercambiar ${montoBruto.toFixed(2)} ${tokenIn} ➔ Recibir ${valorNeto.toFixed(decimalsToShow)} ${simboloSalida}`;
+              if (btnStepInfoText) btnStepInfoText.innerHTML = `✨ <strong>Token ya autorizado:</strong> Esta operación se confirma en <strong>1 sola firma directa</strong> en tu billetera.`;
+              btnAction.className = "w-full py-4 px-6 rounded-2xl font-bold text-base sm:text-lg transition-all duration-200 flex items-center justify-center space-x-3 bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-500 hover:from-emerald-400 hover:to-cyan-400 text-slate-950 shadow-xl shadow-emerald-500/20 active:scale-[0.98]";
+            }
           } else {
             btnActionText.textContent = `🔓 Paso 1: Habilitar ${tokenIn} en tu Billetera`;
-            if (btnStepInfoText) btnStepInfoText.innerHTML = `ℹ️ <strong>Paso 1 de 2:</strong> Autorización requerida por la blockchain. No descuenta fondos. Solo se realiza una única vez.`;
+            if (btnStepInfoText) btnStepInfoText.innerHTML = isExternal 
+              ? `ℹ️ <strong>Paso 1 de 3:</strong> Autorización requerida por la blockchain antes de intercambiar y enviar a la billetera externa.`
+              : `ℹ️ <strong>Paso 1 de 2:</strong> Autorización requerida por la blockchain. No descuenta fondos. Solo se realiza una única vez.`;
             btnAction.className = "w-full py-4 px-6 rounded-2xl font-bold text-base sm:text-lg transition-all duration-200 flex items-center justify-center space-x-3 bg-gradient-to-r from-amber-400 via-amber-500 to-orange-500 hover:from-amber-300 hover:to-orange-400 text-slate-950 shadow-xl shadow-amber-500/20 active:scale-[0.98]";
           }
           break;
@@ -1137,8 +1387,8 @@
     }
 
     // ==========================================
-    // FLUJO DE INTERCAMBIO EN 2 PASOS CONTROLADOS
-    // (PASO 1: APROBAR TOKEN -> PASO 2: EJECUTAR SWAP)
+    // FLUJO DE INTERCAMBIO Y ENVÍO (DIRECTO O EXTERNO)
+    // (PASO 1: APROBAR -> PASO 2: SWAP -> PASO 3: ENVÍO EXTERNO)
     // ==========================================
     async function ejecutarAccionPrincipal() {
       if (isProcessing) return;
@@ -1162,9 +1412,41 @@
       }
 
       const { fee } = calcularComision(montoBruto);
-      if (montoBruto - fee <= 0) {
+      const valorNeto = montoBruto - fee;
+      if (valorNeto <= 0) {
         mostrarToast("error", "El monto ingresado es insuficiente para cubrir la comisión fija.");
         return;
+      }
+
+      // Validar si el destino es una billetera externa
+      let targetExternalAddress = null;
+      if (destinationMode === 'EXTERNAL') {
+        const rawDest = inputExternalAddress.value.trim();
+        if (!rawDest) {
+          mostrarToast("warning", "Por favor ingresa la dirección externa de destino en BSC.");
+          inputExternalAddress.focus();
+          return;
+        }
+
+        if (!ethers.isAddress(rawDest)) {
+          mostrarToast("error", "La dirección de destino no es una dirección EVM/BSC válida.");
+          inputExternalAddress.focus();
+          return;
+        }
+
+        try {
+          targetExternalAddress = ethers.getAddress(rawDest);
+        } catch (_) {
+          targetExternalAddress = rawDest;
+        }
+
+        if (targetExternalAddress.toLowerCase() === CAMBIADOR_ADDRESS.toLowerCase() ||
+            targetExternalAddress.toLowerCase() === USDT_ADDRESS.toLowerCase() ||
+            (DLATAM_ADDRESS && targetExternalAddress.toLowerCase() === DLATAM_ADDRESS.toLowerCase()) ||
+            targetExternalAddress === ethers.ZeroAddress) {
+          mostrarToast("error", "No puedes enviar los fondos a contratos del sistema ni a la dirección cero.");
+          return;
+        }
       }
 
       if (currentMode === 'DLATAM_TO_USDT' && (!DLATAM_ADDRESS || DLATAM_ADDRESS.includes("TU_CONTRATO"))) {
@@ -1185,8 +1467,8 @@
         // PASO 1: Ejecutar ÚNICAMENTE la aprobación sin disparar el swap automáticamente
         await ejecutarAprobacion(tokenAddress, tokenIn, tokenOut, montoFormateado);
       } else {
-        // PASO 2: Ejecutar el intercambio (Swap definitivo)
-        await ejecutarSwap(montoFormateado, tokenIn, tokenOut);
+        // PASO 2 (y PASO 3 si es externo): Ejecutar swap y posterior transferencia
+        await ejecutarSwap(montoFormateado, tokenIn, tokenOut, montoBruto, valorNeto, decimals, targetExternalAddress);
       }
     }
 
@@ -1198,14 +1480,16 @@
       txStatusBox.classList.remove('hidden');
       txExplorerLink.classList.add('hidden');
 
+      const isExternal = destinationMode === 'EXTERNAL';
+
       try {
         await verificarYCambiarRedBSC();
 
         btnActionText.textContent = `Paso 1: Aprobando ${tokenIn} en tu billetera...`;
-        txStatusTitle.textContent = "Paso 1 de 2: Autorización de Tokens";
-        txStepBadge.textContent = "Paso 1/2";
+        txStatusTitle.textContent = isExternal ? "Paso 1 de 3: Autorización de Tokens" : "Paso 1 de 2: Autorización de Tokens";
+        txStepBadge.textContent = isExternal ? "Paso 1/3" : "Paso 1/2";
         txStatusDesc.textContent = `Acepta la solicitud en tu billetera para permitir el intercambio de tus ${tokenIn}. (Solo se solicita una única vez).`;
-        mostrarToast("info", `Paso 1 de 2: Confirma la autorización de ${tokenIn} en tu billetera.`);
+        mostrarToast("info", `Paso 1: Confirma la autorización de ${tokenIn} en tu billetera.`);
 
         const tokenContract = new ethers.Contract(tokenAddress, ERC20_ABI, signer);
         // Aprobamos MaxUint256 para que el usuario NUNCA más tenga que pagar gas ni firmar permisos para este token
@@ -1221,8 +1505,9 @@
         else allowanceDLATAM = ethers.MaxUint256;
 
         txStatusTitle.textContent = "¡Paso 1 Completado!";
-        txStatusDesc.textContent = `¡${tokenIn} autorizado correctamente! Ahora haz clic en "Paso 2: Intercambiar" para completar tu swap.`;
-        mostrarToast("success", `¡${tokenIn} autorizado con éxito! Ahora pulsa "Paso 2: Intercambiar" para recibir tus ${tokenOut}.`);
+        const nextButtonName = isExternal ? "Intercambiar y Enviar" : "Paso 2: Intercambiar";
+        txStatusDesc.textContent = `¡${tokenIn} autorizado correctamente! Ahora haz clic en "${nextButtonName}" para completar la operación.`;
+        mostrarToast("success", `¡${tokenIn} autorizado con éxito! Pulsa "${nextButtonName}" para recibir tus ${tokenOut}.`);
 
       } catch (err) {
         console.error("Error en Aprobación:", err);
@@ -1235,20 +1520,22 @@
       }
     }
 
-    // PASO 2: Ejecución del Swap
-    async function ejecutarSwap(montoFormateado, tokenIn, tokenOut) {
+    // PASO 2 y 3: Ejecución del Swap y Envío al Destinatario (Conectado o Externo)
+    async function ejecutarSwap(montoFormateado, tokenIn, tokenOut, montoBruto, valorNeto, decimalsToShow, targetExternalAddress) {
       isProcessing = true;
       btnAction.disabled = true;
       btnSpinner.classList.remove('hidden');
       txStatusBox.classList.remove('hidden');
       txExplorerLink.classList.add('hidden');
 
+      const isExternal = !!targetExternalAddress;
+
       try {
         await verificarYCambiarRedBSC();
 
-        btnActionText.textContent = "Confirmando Intercambio en tu billetera...";
-        txStatusTitle.textContent = "Paso 2 de 2: Ejecutando Intercambio";
-        txStepBadge.textContent = "Paso 2/2";
+        btnActionText.textContent = isExternal ? "Paso 2: Confirmando Intercambio en billetera..." : "Confirmando Intercambio en tu billetera...";
+        txStatusTitle.textContent = isExternal ? "Paso 2 de 3: Ejecutando Intercambio" : "Paso 2 de 2: Ejecutando Intercambio";
+        txStepBadge.textContent = isExternal ? "Paso 2/3" : "Paso 2/2";
         txStatusDesc.textContent = `Confirma la transacción en tu billetera para recibir tus ${tokenOut}...`;
         mostrarToast("info", `Confirma el intercambio en tu billetera para recibir tus ${tokenOut}.`);
 
@@ -1267,13 +1554,61 @@
 
         const receipt = await swapTx.wait();
 
-        mostrarToast("success", `¡Intercambio exitoso! Recibiste tus ${tokenOut}. Bloque #${receipt.blockNumber}`);
-        txStatusTitle.textContent = "¡Transacción Exitosa!";
-        txStatusDesc.textContent = `Tus ${tokenOut} han sido transferidos a tu billetera exitosamente.`;
+        // CASO A: Fondos en billetera conectada (flujo habitual)
+        if (!isExternal) {
+          mostrarToast("success", `¡Intercambio exitoso! Recibiste tus ${tokenOut}. Bloque #${receipt.blockNumber}`);
+          txStatusTitle.textContent = "¡Transacción Exitosa!";
+          txStatusDesc.textContent = `Tus ${tokenOut} han sido transferidos a tu billetera conectada exitosamente.`;
 
-        inputAmount.value = "";
-        outputAmount.value = "";
-        await cargarSaldos();
+          inputAmount.value = "";
+          outputAmount.value = "";
+          await cargarSaldos();
+          return;
+        }
+
+        // CASO B: Fondos destinados a billetera externa (PASO 3 DE 3)
+        const tokenOutAddress = currentMode === 'USDT_TO_DLATAM' ? DLATAM_ADDRESS : USDT_ADDRESS;
+        const tokenOutDecimals = currentMode === 'USDT_TO_DLATAM' ? DLATAM_DECIMALS : USDT_DECIMALS;
+        const destShort = `${targetExternalAddress.substring(0, 6)}...${targetExternalAddress.substring(targetExternalAddress.length - 4)}`;
+
+        btnActionText.textContent = `Paso 3: Enviando a ${destShort}...`;
+        txStatusTitle.textContent = "Paso 3 de 3: Enviando a Billetera Externa";
+        txStepBadge.textContent = "Paso 3/3";
+        txStatusDesc.textContent = `Intercambio minado con éxito (Bloque #${receipt.blockNumber}). Por favor confirma en tu billetera la transferencia de ${valorNeto.toFixed(decimalsToShow)} ${tokenOut} hacia ${destShort}...`;
+        mostrarToast("info", `Paso 3 de 3: Confirma el envío hacia ${destShort} en tu billetera.`);
+
+        try {
+          const tokenOutContract = new ethers.Contract(tokenOutAddress, ERC20_ABI, signer);
+          const montoNetoUnits = ethers.parseUnits(valorNeto.toFixed(decimalsToShow), tokenOutDecimals);
+
+          const transferTx = await tokenOutContract.transfer(targetExternalAddress, montoNetoUnits);
+
+          txStatusDesc.textContent = `Transfiriendo ${valorNeto.toFixed(decimalsToShow)} ${tokenOut} a la dirección externa en BSC...`;
+          txExplorerLink.href = `https://bscscan.com/tx/${transferTx.hash}`;
+
+          const transferReceipt = await transferTx.wait();
+
+          mostrarToast("success", `¡Operación completada! Se transfirieron ${valorNeto.toFixed(decimalsToShow)} ${tokenOut} a la billetera externa.`);
+          txStatusTitle.textContent = "¡Intercambio y Envío Completados!";
+          txStatusDesc.textContent = `Se intercambiaron ${montoBruto.toFixed(2)} ${tokenIn} y se enviaron exitosamente ${valorNeto.toFixed(decimalsToShow)} ${tokenOut} a ${targetExternalAddress} (Bloque #${transferReceipt.blockNumber}).`;
+
+          inputAmount.value = "";
+          outputAmount.value = "";
+          await cargarSaldos();
+
+        } catch (transferErr) {
+          console.error("Error en transferencia externa:", transferErr);
+          const errCode = transferErr?.code || transferErr?.error?.code;
+          const isUserRejected = errCode === 4001 || (transferErr?.message || "").toLowerCase().includes("rejected");
+
+          txStatusTitle.textContent = "Swap Exitoso (Transferencia externa no completada)";
+          txStatusDesc.textContent = isUserRejected
+            ? `El intercambio se completó con éxito y tus fondos (${valorNeto.toFixed(decimalsToShow)} ${tokenOut}) están 100% seguros en tu billetera conectada (${userAddress.substring(0, 6)}...), ya que cancelaste la transferencia externa en tu billetera. Puedes transferirlos manualmente en cualquier momento.`
+            : `El swap se completó en tu billetera conectada, pero la transferencia hacia la dirección externa falló. Tus fondos están resguardados en tu billetera actual de forma segura.`;
+
+          mostrarToast("warning", `Tus ${tokenOut} quedaron resguardados en tu billetera conectada.`);
+          await cargarSaldos();
+        }
 
       } catch (err) {
         console.error("Error en Swap:", err);
@@ -1418,6 +1753,50 @@
       btnSwitchDirection.addEventListener('click', () => {
         establecerModo(currentMode === 'USDT_TO_DLATAM' ? 'DLATAM_TO_USDT' : 'USDT_TO_DLATAM');
       });
+
+      // Selección de Destino de Fondos (Billetera conectada o Billetera externa)
+      if (btnDestConnected) {
+        btnDestConnected.addEventListener('click', () => establecerDestino('CONNECTED'));
+      }
+      if (btnDestExternal) {
+        btnDestExternal.addEventListener('click', () => establecerDestino('EXTERNAL'));
+      }
+
+      if (btnPasteExternalAddress) {
+        btnPasteExternalAddress.addEventListener('click', async () => {
+          try {
+            const clipText = await navigator.clipboard.readText();
+            if (clipText) {
+              inputExternalAddress.value = clipText.trim();
+              if (btnClearExternalAddress) btnClearExternalAddress.classList.remove('hidden');
+              actualizarCalculoVisual();
+              mostrarToast("success", "Dirección pegada desde el portapapeles.");
+            }
+          } catch (e) {
+            mostrarToast("info", "Pega manualmente la dirección en el campo de texto.");
+          }
+        });
+      }
+
+      if (btnClearExternalAddress) {
+        btnClearExternalAddress.addEventListener('click', () => {
+          inputExternalAddress.value = '';
+          btnClearExternalAddress.classList.add('hidden');
+          actualizarCalculoVisual();
+          inputExternalAddress.focus();
+        });
+      }
+
+      if (inputExternalAddress) {
+        inputExternalAddress.addEventListener('input', () => {
+          if (inputExternalAddress.value.trim().length > 0) {
+            if (btnClearExternalAddress) btnClearExternalAddress.classList.remove('hidden');
+          } else {
+            if (btnClearExternalAddress) btnClearExternalAddress.classList.add('hidden');
+          }
+          actualizarCalculoVisual();
+        });
+      }
 
       btnMaxBalance.addEventListener('click', () => {
         const balance = currentMode === 'USDT_TO_DLATAM' ? balanceUSDT : balanceDLATAM;
